@@ -19,7 +19,9 @@ import {
   API_BASE_URL,
 } from './constants';
 import { chat, getOrder } from './api';
-import { convertOrderDataToCardData } from './orderDataAdapter';
+import { convertOrderDataToCardData, convertOrderListItemToCardData } from './orderDataAdapter';
+import { ORDER_LIST } from '../../mock';
+import type { OrderListItem } from '../../types';
 const AiAssistantContext = createContext<AiAssistantContextValue | null>(null);
 
 export const useAiAssistantContext = () => {
@@ -152,6 +154,7 @@ export const AiAssistantProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       const initialMessages: ChatMessage[] = [];
       let currentOrder: OrderData | null = null;
+      let currentOrderListItem: OrderListItem | null = null;
 
       if (orderId) {
         try {
@@ -165,9 +168,29 @@ export const AiAssistantProvider: React.FC<{ children: React.ReactNode }> = ({ c
               status: order.status,
               refundStage: 'none',
             };
+          } else {
+            const localOrder = ORDER_LIST.find(o => o.orderId === orderId) || null;
+            if (localOrder) {
+              currentOrderListItem = localOrder;
+              contextRef.current.currentOrderId = orderId;
+              contextRef.current.orderContext = {
+                category: localOrder.category,
+                status: localOrder.statusText,
+                refundStage: 'none',
+              };
+            }
           }
         } catch {
-          setDegradeLevel('L1');
+          const localOrder = ORDER_LIST.find(o => o.orderId === orderId) || null;
+          if (localOrder) {
+            currentOrderListItem = localOrder;
+            contextRef.current.currentOrderId = orderId;
+            contextRef.current.orderContext = {
+              category: localOrder.category,
+              status: localOrder.statusText,
+              refundStage: 'none',
+            };
+          }
         }
       }
 
@@ -180,8 +203,10 @@ export const AiAssistantProvider: React.FC<{ children: React.ReactNode }> = ({ c
       };
       initialMessages.push(welcome);
 
-      if (source === 'order_detail' && currentOrder) {
-        const orderCard = convertOrderDataToCardData(currentOrder);
+      if (source === 'order_detail' && (currentOrder || currentOrderListItem)) {
+        const orderCard = currentOrder
+          ? convertOrderDataToCardData(currentOrder)
+          : convertOrderListItemToCardData(currentOrderListItem!);
         const orderCardMessage: ChatMessage = {
           id: genId(),
           role: 'assistant',

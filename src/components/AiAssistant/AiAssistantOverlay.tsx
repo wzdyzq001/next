@@ -552,7 +552,15 @@ const AiAssistantOverlay: React.FC = () => {
                     {msg.content && <div className="ai-message-text">{msg.content}</div>}
                     {msg.orderCard && (
                       <div className="ai-message-order-card">
-                        <FullOrderCard order={msg.orderCard} />
+                        <FullOrderCard
+                          order={msg.orderCard}
+                          onActionClick={(label) => {
+                            executeAction({ label, kind: 'custom' as any });
+                          }}
+                          onSuggestionClick={(suggestion) => {
+                            sendMessage(suggestion);
+                          }}
+                        />
                       </div>
                     )}
                     {msg.featureCard && (

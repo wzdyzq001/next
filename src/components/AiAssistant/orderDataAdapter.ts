@@ -1,5 +1,6 @@
 import type { OrderData, OrderCategory, OrderStatus } from './types';
 import type { OrderCardData } from './OrderCard/orderCardTypes';
+import type { OrderListItem } from '../../types';
 
 const CATEGORY_LABEL_MAP: Record<string, string> = {
   food: '餐饮',
@@ -374,5 +375,322 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
     extension,
     actions,
     suggestions,
+  };
+}
+
+const LIST_ITEM_STATUS_MAP: Record<string, OrderCardData['orderStatus']> = {
+  '待支付': 'pending_pay',
+  '待使用': 'unused',
+  '待预约': 'to_book',
+  '预约确认中': 'booking',
+  '预约成功': 'booked',
+  '预订确认中': 'booking',
+  '预订成功': 'booked',
+  '配送中': 'delivering',
+  '已送达': 'completed',
+  '已入住': 'completed',
+  '已入园': 'completed',
+  '交易完成': 'completed',
+  '退款申请中': 'refunding',
+  '退款中': 'refunding',
+  '退款成功': 'refund_success',
+  '退款失败': 'refund_fail',
+  '已取消': 'cancelled',
+  '订单取消': 'cancelled',
+};
+
+const LIST_ITEM_CATEGORY_MAP: Record<string, OrderCardData['category']> = {
+  food: 'food',
+  hotel: 'hotel',
+  scenic: 'scenic',
+  play: 'scenic',
+  fun: 'general',
+  general: 'general',
+  travel: 'travel_agency',
+  travel_agency: 'travel_agency',
+};
+
+function mapListItemProductType(item: OrderListItem): OrderCardData['productType'] {
+  const { category, hotelProductType, scenicProductType, travelProductType, fulfillmentModes } = item;
+  if (category === 'hotel') {
+    if (hotelProductType === 'calendar_room') return 'calendar_room';
+    return 'presale_voucher';
+  }
+  if (category === 'scenic' || category === 'play') {
+    if (scenicProductType === 'calendar_ticket') return 'calendar_ticket';
+    if (scenicProductType === 'presale_voucher') return 'presale_voucher';
+    return 'group_voucher';
+  }
+  if (category === 'travel') {
+    return 'presale_voucher';
+  }
+  if (fulfillmentModes?.includes('delivery')) {
+    return 'order_takeout';
+  }
+  return 'group_voucher';
+}
+
+function buildListItemExtension(item: OrderListItem): OrderCardData['extension'] {
+  const status = item.statusText;
+  const category = LIST_ITEM_CATEGORY_MAP[item.category] || item.category;
+
+  if (status === '待支付') {
+    return {
+      type: 'payment_countdown',
+      title: '支付倒计时',
+      summary: '29分59秒',
+    };
+  }
+
+  if (status === '退款申请中' || status === '退款中') {
+    return {
+      type: 'refund',
+      title: '退款进度',
+      summary: '退款处理中，请耐心等待',
+    };
+  }
+
+  if (status === '退款成功') {
+    return {
+      type: 'refund_success',
+      title: '退款成功',
+      summary: '退款已原路退回',
+    };
+  }
+
+  if (status === '配送中') {
+    return {
+      type: 'progress',
+      title: '配送进度',
+      steps: [
+        { label: '商家已接单', state: 'done' },
+        { label: '骑手取货中', state: 'done' },
+        { label: '配送中', state: 'active' },
+        { label: '已送达', state: 'pending' },
+      ],
+    };
+  }
+
+  if (status === '已送达') {
+    return {
+      type: 'delivery_completed',
+      title: '配送完成',
+      summary: '骑手已送达，请确认收货',
+    };
+  }
+
+  if ((category === 'hotel') && (status === '预约成功' || status === '预订成功' || status === '已入住' || status === '交易完成')) {
+    return {
+      type: 'hotel_stay',
+      title: '入住信息',
+      hotelInfo: {
+        hotelName: item.merchant,
+        checkInDate: '2026-07-10',
+        checkOutDate: '2026-07-12',
+        nights: 2,
+        statusTags: status === '已入住' || status === '交易完成' ? [{ text: '已入住', type: 'success' as const }] : undefined,
+      },
+    };
+  }
+
+  if ((category === 'scenic') && (status === '预约成功' || status === '预订成功' || status === '已入园' || status === '交易完成')) {
+    return {
+      type: 'scenic_entry',
+      title: '入园信息',
+      scenicInfo: {
+        scenicName: item.merchant,
+        visitDate: '2026-07-15',
+        entryTime: '09:00-10:00',
+        statusTags: status === '已入园' || status === '交易完成' ? [{ text: '已入园', type: 'success' as const }] : undefined,
+      },
+    };
+  }
+
+  if (category === 'travel_agency' && (status === '预约成功' || status === '待出行' || status === '行程中' || status === '交易完成')) {
+    return {
+      type: 'travel_info',
+      title: '行程信息',
+      info: [
+        { label: '出发时间', value: '2026-07-20 08:00' },
+        { label: '返回时间', value: '2026-07-23 18:00' },
+        { label: '集合地点', value: '指定酒店大堂' },
+        { label: '导游', value: '张导 138****8888' },
+      ],
+    };
+  }
+
+  if (status === '待使用' && item.fulfillmentModes?.includes('code')) {
+    return {
+      type: 'pickup_code',
+      title: '取餐码/核销码',
+      pickupCode: '9001 1345 653',
+      hasPickupCode: true,
+    };
+  }
+
+  return undefined;
+}
+
+function buildListItemActions(item: OrderListItem): OrderCardData['actions'] {
+  const status = item.statusText;
+  const category = LIST_ITEM_CATEGORY_MAP[item.category];
+  const actions: OrderCardData['actions'] = [];
+
+  if (status === '待支付') {
+    actions.push({ label: '去支付', type: 'primary' });
+    actions.push({ label: '取消订单', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '待使用') {
+    actions.push({ label: '去使用', type: 'primary' });
+    actions.push({ label: '申请退款', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '待预约') {
+    actions.push({ label: '立即预约', type: 'primary' });
+    actions.push({ label: '申请退款', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '预约确认中' || status === '预订确认中') {
+    actions.push({ label: '查看详情', type: 'primary' });
+    actions.push({ label: '取消预约', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '预约成功' || status === '预订成功') {
+    actions.push({ label: '查看凭证', type: 'primary' });
+    actions.push({ label: '修改预约', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '配送中') {
+    actions.push({ label: '联系骑手', type: 'primary' });
+    actions.push({ label: '查看地图', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '已送达' || status === '已入住' || status === '已入园') {
+    actions.push({ label: '评价', type: 'primary' });
+    actions.push({ label: '再来一单', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '交易完成') {
+    actions.push({ label: '再来一单', type: 'primary' });
+    actions.push({ label: '申请售后', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '退款申请中' || status === '退款中') {
+    actions.push({ label: '撤销退款', type: 'primary' });
+    actions.push({ label: '查看进度', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '退款成功') {
+    actions.push({ label: '再来一单', type: 'primary' });
+    return actions;
+  }
+
+  if (status === '退款失败') {
+    actions.push({ label: '重新申请', type: 'primary' });
+    actions.push({ label: '联系客服', type: 'secondary' });
+    return actions;
+  }
+
+  if (status === '已取消' || status === '订单取消') {
+    actions.push({ label: '重新下单', type: 'primary' });
+    actions.push({ label: '删除订单', type: 'secondary' });
+    return actions;
+  }
+
+  actions.push({ label: '查看详情', type: 'primary' });
+  return actions;
+}
+
+function buildListItemSuggestions(item: OrderListItem): string[] {
+  const status = item.statusText;
+  const category = LIST_ITEM_CATEGORY_MAP[item.category];
+  const suggestions: string[] = [];
+
+  if (status === '待使用' || status === '待预约') {
+    suggestions.push('怎么使用？');
+    suggestions.push('可以退款吗？');
+    suggestions.push('有效期多久？');
+    return suggestions;
+  }
+
+  if (status === '预约成功' || status === '预订成功') {
+    suggestions.push('怎么修改预约？');
+    suggestions.push('可以取消吗？');
+    suggestions.push('需要带什么？');
+    return suggestions;
+  }
+
+  if (status === '配送中') {
+    suggestions.push('还有多久到？');
+    suggestions.push('能联系骑手吗？');
+    suggestions.push('可以改地址吗？');
+    return suggestions;
+  }
+
+  if (status === '交易完成') {
+    suggestions.push('怎么开发票？');
+    suggestions.push('能再买一单吗？');
+    suggestions.push('评价有什么奖励？');
+    return suggestions;
+  }
+
+  if (status === '退款申请中' || status === '退款中') {
+    suggestions.push('退款多久到账？');
+    suggestions.push('能撤销退款吗？');
+    suggestions.push('退到哪里？');
+    return suggestions;
+  }
+
+  suggestions.push('订单详情');
+  suggestions.push('联系客服');
+  return suggestions.slice(0, 3);
+}
+
+export function convertOrderListItemToCardData(item: OrderListItem): OrderCardData {
+  const category = LIST_ITEM_CATEGORY_MAP[item.category] || 'general';
+  const productType = mapListItemProductType(item);
+  const orderStatus = LIST_ITEM_STATUS_MAP[item.statusText] || 'unused';
+  const statusText = item.statusText;
+  const statusColor = item.statusColor;
+
+  const tags: string[] = [];
+  if (item.productRules?.refundRule) tags.push(item.productRules.refundRule);
+  if (item.productRules?.validDate) tags.push(item.productRules.validDate);
+  if (tags.length === 0 && item.category === 'food') tags.push('免预约');
+
+  const extension = buildListItemExtension(item);
+  const actions = buildListItemActions(item);
+  const suggestions = buildListItemSuggestions(item);
+
+  return {
+    id: item.orderId,
+    category,
+    categoryLabel: CATEGORY_LABEL_MAP[category] || category,
+    productType,
+    productTypeLabel: PRODUCT_TYPE_LABEL_MAP[productType] || productType,
+    orderStatus,
+    orderStatusLabel: statusText,
+    productName: item.product,
+    price: item.price / 100,
+    thumbnail: item.thumbnail,
+    tags,
+    storeName: item.merchant,
+    distance: '',
+    statusText,
+    statusColor,
+    extension,
+    actions,
+    suggestions,
+    urgeReason: statusText === '待预约' ? '预约后可随时退款' : undefined,
   };
 }
