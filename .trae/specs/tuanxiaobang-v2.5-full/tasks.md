@@ -1,0 +1,401 @@
+# 团小帮 V2.5 - 全栈Demo 实施计划（基于V2.1迭代）
+
+## [x] Task 1: 后端项目初始化与基础架构
+- **Priority**: high
+- **Depends On**: None
+- **Description**:
+  - 在 `/Users/bytedance/Downloads/AI智能助手V2.1-server/` 创建独立后端项目
+  - 初始化 Node.js + TypeScript + Fastify 项目（package.json, tsconfig.json）
+  - 配置 Prisma ORM + SQLite，定义核心数据模型（Order, Conversation, Message, Reminder, Reservation, UrgentRequest, RefundRecord, MerchantNotice, MerchantPresetQuestion, GuideQuestionCandidate, Session）
+  - 创建数据库 seed 脚本，预置 mock 订单数据（覆盖餐饮/酒店/景区/综合/旅行社五大行业×各状态×各商品类型，含22种消息类型的mock消息数据、商家预设问题mock数据、商家紧急通知mock数据）
+  - 搭建 Fastify 服务器基础框架（CORS、日志、错误处理、健康检查接口 GET /health）
+  - 配置 WebSocket 支持（fastify-websocket 插件）
+- **Acceptance Criteria Addressed**: AC-16, AC-17
+- **Test Requirements**:
+  - `programmatic` TR-1.1: 后端项目可通过 `npm run dev` 启动，GET /health 返回 200
+  - `programmatic` TR-1.2: Prisma migrate 成功，seed 数据写入 SQLite
+  - `programmatic` TR-1.3: `npx tsc --noEmit` 零错误
+  - `human-judgement` TR-1.4: 项目目录结构清晰，分层明确（routes/services/prisma/types）
+- **Notes**: 后端端口使用 3001，与前端 5173 区分
+
+## [x] Task 2: 后端核心API（订单+引导问题+对话引擎）
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - 实现订单相关 API：GET /api/orders（列表）、GET /api/orders/:id（详情，含四层卡片数据）、GET /api/orders/:id/messages（消息列表）
+  - 实现引导问题 API：GET /api/orders/:id/guide-questions，服务端实现三层排序算法（P0×0.5+F×0.3+C×0.2），支持排除清单过滤、已回答问题去重、对话轮次联动、商家预设问题加权（δ=0.15，mock数据含2-3个商家预设问题）
+  - 实现对话引擎 POST /api/chat：关键词意图识别+上下文感知+预置话术，支持：订单查询、退款意图识别（挽留流程）、退款能力三因子判断、待支付取消挽留、使用提醒、预约、加急、再来一单、攻略/指引、极端天气、商家通知展示、转人工/商家、无法识别兜底
+  - 实现会话管理：POST /api/sessions（创建/恢复）、会话30min过期逻辑
+  - 实现退款能力判断 API：POST /api/refund/capability，基于三因子返回 full_refund/partial_refund/non_refundable/cancelable
+  - Mock触发接口：POST /api/simulate/merchant-notice（模拟推送商家紧急通知）、POST /api/simulate/state-change（模拟订单状态变更）、POST /api/simulate/weather（模拟极端天气）
+- **Acceptance Criteria Addressed**: AC-6, AC-8, AC-9, AC-11, AC-12, AC-14, AC-16, AC-19
+- **Test Requirements**:
+  - `programmatic` TR-2.1: GET /api/orders 返回订单列表JSON，含各行业mock订单
+  - `programmatic` TR-2.2: GET /api/orders/:id/guide-questions 返回≤3个排序后问题，含商家标签问题加权
+  - `programmatic` TR-2.3: POST /api/chat 发送"我要退款"返回挽留话术；发送"还是退吧"返回退款卡片数据
+  - `programmatic` TR-2.4: POST /api/refund/capability 正确返回退款能力判断结果
+  - `human-judgement` TR-2.5: 对话引擎覆盖主要意图，回复符合PRD话术规范
+
+## [x] Task 3: 后端功能操作API+WebSocket
+- **Priority**: high
+- **Depends On**: Task 2
+- **Description**:
+  - 实现功能操作 API：
+    - POST /api/reminders（设置使用提醒，含去重规则校验：明天/后天与本周去重）
+    - GET /api/reminders/:orderId（查询提醒状态）
+    - DELETE /api/reminders/:id（取消提醒）
+    - POST /api/reservations（提交预约，含日期/时段/人数校验）
+    - POST /api/urgent-requests（发送加急，含15min冷却校验）
+    - POST /api/reorder（再来一单，返回订单摘要+价格）
+    - POST /api/refund/submit（提交退款申请，含原因+金额）
+    - POST /api/pay（模拟支付，返回成功/失败）
+  - 实现 WebSocket：连接管理、订单状态变更推送、气泡推送通知、商家通知推送、天气预警推送
+  - 实现15s轮询兜底接口 GET /api/orders/:id/latest-state
+- **Acceptance Criteria Addressed**: AC-7, AC-12, AC-16
+- **Test Requirements**:
+  - `programmatic` TR-3.1: 加急请求15min内重复提交返回429冷却提示
+  - `programmatic` TR-3.2: POST /api/simulate/state-change 触发WebSocket推送
+  - `programmatic` TR-3.3: 使用提醒明天/后天与本周去重逻辑正确
+  - `human-judgement` TR-3.4: 所有功能操作API参数校验完善，错误返回清晰
+
+## [ ] Task 4: 前端类型扩展+API客户端对接+Provider升级
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - 在现有 [types.ts](file:///Users/bytedance/Downloads/AI智能助手V2.1/src/components/AiAssistant/types.ts) 基础上扩展类型：
+    - 补充 WeatherWarning、MerchantNotice、MerchantPresetQuestion、FeatureCardType扩展
+    - 补充22种消息类型 MessageType 枚举
+    - 补充 DegradeLevel（已有但需完善L1/L3细节）
+    - 补充转人工相关类型（HumanTransferState、TransferContext）
+    - 补充 WebSocket 消息类型（WSMessage）
+  - 在现有 api.ts 基础上对接真实后端（localhost:3001），后端不可用时自动降级到现有mockChatService
+  - 升级 AiAssistantProvider：
+    - 新增 WebSocket 连接状态管理
+    - 新增降级级别状态（normal/L1/L2/L3）
+    - 新增转人工状态管理
+    - 新增商家通知队列管理
+    - 新增待操作卡片15min过期定时器
+    - 扩展埋点日志
+  - 保持现有目录结构不做大规模重组，在现有文件基础上增量修改
+- **Acceptance Criteria Addressed**: AC-17, AC-20, NFR-3, NFR-6, NFR-7, NFR-9
+- **Test Requirements**:
+  - `programmatic` TR-4.1: TypeScript 严格模式编译零错误
+  - `programmatic` TR-4.2: 后端未启动时前端可独立运行（自动降级mockService）
+  - `programmatic` TR-4.3: 后端启动后API请求成功，数据正确渲染
+  - `human-judgement` TR-4.4: CSS 继续使用 ai- 前缀，样式隔离
+
+## [ ] Task 5: 浮层升级+三态完善+顶/底部区域
+- **Priority**: high
+- **Depends On**: Task 4
+- **Description**:
+  - 在现有 [AiAssistantOverlay.tsx](file:///Users/bytedance/Downloads/AI智能助手V2.1/src/components/AiAssistant/AiAssistantOverlay.tsx) 基础上升级：
+    - 修复三态手势：上滑全屏（touch事件）、下滑恢复9分屏、点击遮罩关闭
+    - 完善遮罩层（9分屏时顶部露出区域半透明遮罩）
+    - 底层页面冻结（浮层打开时document.body overflow:hidden）
+    - 转人工时顶部区域变更（"人工客服"标识+客服头像+在线状态）
+    - L2降级时顶部黄色提示条"AI助手暂时不可用，部分功能受限"
+    - L2降级时输入框disabled，placeholder改为"AI助手升级中，暂时无法回答您的问题"
+  - 在现有 AiInputArea 基础上完善：订单选择器弹窗、已选订单tag展示、语音占位toast
+- **Acceptance Criteria Addressed**: AC-3, AC-13, AC-15, AC-19
+- **Test Requirements**:
+  - `human-judgement` TR-5.1: 浮层三态切换平滑300ms，手势响应无卡顿
+  - `human-judgement` TR-5.2: 9分屏时顶部露出底层页面可见，全屏时铺满
+  - `human-judgement` TR-5.3: 底部输入区布局正确，订单选择器可展开
+  - `human-judgement` TR-5.4: L2降级时输入框正确禁用+黄色提示条
+  - `human-judgement` TR-5.5: 转人工后顶部标识变更正确
+
+## [ ] Task 6: 三种入口完善+消息通知条
+- **Priority**: high
+- **Depends On**: Task 5
+- **Description**:
+  - 在现有入口基础上完善：
+    - 固定入口A（列表页右上角）：在App/ListPage中添加AI图标按钮+未读红点(8×8px+2px白描边)
+    - 固定入口B（详情页左下角）：非待支付展示圆形AI图标(56px)，待支付展示红色应付金额"¥XX.XX 立即支付"，无AI图标
+  - 在现有 [BubblePushSystem/](file:///Users/bytedance/Downloads/AI智能助手V2.1/src/components/AiAssistant/BubblePushSystem) 基础上完善：
+    - TemporaryShortBubble增加3-5s自动消失动画（opacity+transform）
+    - LongBubble增加页面滚动触发收折（监听scroll事件）
+    - 气泡频控逻辑（同订单同状态节点不重复推送）
+    - 待支付订单不推送气泡（已有逻辑需验证）
+  - **新增** 消息通知条组件（NotificationBar）：详情页顶部固定，最多轮转3条按优先级降序，每5s轮转，点击进入AI带入消息内容
+- **Acceptance Criteria Addressed**: AC-1, AC-2, AC-11, AC-15
+- **Test Requirements**:
+  - `human-judgement` TR-6.1: 列表页右上角AI图标+红点正确展示
+  - `human-judgement` TR-6.2: 待支付页左下角红色金额无AI图标
+  - `human-judgement` TR-6.3: 临时气泡3-5s自动消失；长气泡5s或滚动后收折
+  - `human-judgement` TR-6.4: 消息通知条轮转展示≤3条，点击进入AI
+  - `programmatic` TR-6.5: 待支付订单不推送气泡
+
+## [ ] Task 7: 聊天消息列表扩展+新消息类型
+- **Priority**: high
+- **Depends On**: Task 5
+- **Description**:
+  - 在现有 AiChatMessageList 基础上扩展：
+    - 新增 SystemMessage 组件（居中灰色小字，如"已转人工客服"、"操作已超时"）
+    - 新增 WeatherAlertMessage 组件（极端天气橙/红色背景卡片）
+    - 新增 MerchantNoticeMessage 组件（商家紧急通知卡片）
+    - 新增 TransferWaitingCard 组件（转人工等待卡片，展示7字段上下文摘要）
+    - 完善 typing 动画（三个跳动圆点，已有AiTypingIndicator需优化样式）
+    - 消息历史20条上限管理（超出移除最早消息）
+    - 欢迎语完善（无历史时展示完整欢迎语+引导问题）
+    - 新消息提醒摘要（有未读时"您有N条订单提醒待查收"）
+- **Acceptance Criteria Addressed**: AC-1, AC-4, AC-11, AC-15, AC-19
+- **Test Requirements**:
+  - `human-judgement` TR-7.1: AI/用户消息气泡左右区分正确
+  - `human-judgement` TR-7.2: 发送消息自动滚动到底部，AI回复有typing动画
+  - `human-judgement` TR-7.3: 消息超20条旧消息移除
+  - `human-judgement` TR-7.4: 极端天气卡片橙/红背景；商家通知卡片展示商家名+全文+时间
+  - `human-judgement` TR-7.5: 转人工时展示等待卡片+上下文摘要
+
+## [ ] Task 8: 四层订单卡片扩展组件完善
+- **Priority**: high
+- **Depends On**: Task 7
+- **Description**:
+  - 在现有 [AiOrderCard/](file:///Users/bytedance/Downloads/AI智能助手V2.1/src/components/AiAssistant/AiOrderCard) 基础上完善：
+    - 验证 BaseLayer 渲染：缩略图60×60圆角8px+商品名15px单行截断+价格15px 600+≤3个标签+门店名12px #6B7280+导航SVG斜箭头+电话📞+右上角彩色状态角标
+    - 扩展层新增/完善组件：
+      - DeliveryMap：CSS模拟配送地图（背景+网格线+骑手位置图标动画+距离标注+预计送达时间）
+      - PaymentCountdown验证：≤5分钟变红闪烁+触发临时气泡
+      - FulfillmentTimeline脉冲动画优化
+      - CollapsibleTimeline折叠行背景#F3F4F6圆角8px
+      - HotelCheckinInfo（入住/离店日期+房间类型+人数）
+      - ScenicPlayInfo（游玩日期+入园时段+人数）
+      - TravelItineraryInfo（出发日期+行程天数+目的地+倒计时）
+    - 操作层按钮样式精修：统一白底+1px灰边框#E5E7EB+灰字#6B7280+圆角8px；立即支付唯一红色#FE2C55
+    - 状态角标颜色验证：橙=待支付/退款失败、红=待使用/待预约、蓝=进行中、绿=完成、灰=取消/退款成功
+    - 实现扩展层智能裁剪：追问时隐藏非核心字段、气泡入口突出事件字段、多卡时隐藏扩展层
+- **Acceptance Criteria Addressed**: AC-4, AC-5, AC-11, AC-15, AC-18
+- **Test Requirements**:
+  - `programmatic` TR-8.1: 基础层所有字段正确渲染
+  - `human-judgement` TR-8.2: 角标颜色严格对应规范；按钮样式统一
+  - `human-judgement` TR-8.3: 卡片圆角12px白底，无实线分割线，间距12px
+  - `human-judgement` TR-8.4: 配送地图CSS模拟效果合理，骑手图标动画
+  - `human-judgement` TR-8.5: 支付倒计时≤5分钟变红闪烁
+
+## [ ] Task 9: 操作层状态机补全
+- **Priority**: high
+- **Depends On**: Task 8
+- **Description**:
+  - 在现有 [constants.ts](file:///Users/bytedance/Downloads/AI智能助手V2.1/src/components/AiAssistant/constants.ts) 的 ACTION_BUTTON_CONFIG 基础上补全：
+    - 验证餐饮6种核销组合按钮（纯券码/纯点单/点单+券码/配送+券码/点单+配送/点单+配送+券码）
+    - 验证餐饮点单全流程按钮（待接单/备餐中/配送中/已送达）
+    - 补全酒店按钮矩阵（预售券待预约[预约][导航]、已预约待入住[取消预约][导航][入住指引]、日历房待确认[取消订单]、已确认待入住[取消预订][导航][入住指引]、已入住[再次预订][评价]）
+    - 补全景区按钮矩阵（团购/预售券/日历票各状态）
+    - 补全综合按钮（演出/KTV/电影）
+    - 补全旅行社按钮（待出行[出行指引][取消订单]+倒计时、行程中标签无按钮、已完成[评价]）
+    - 退款状态优先逻辑（退款中/成功无操作按钮）
+    - 待支付仅红色[立即支付]
+    - 退款按钮不外露
+    - 正餐二级类目"提前预约免排队"判断
+    - 日历房/票完成/取消/退款成功[再次预订]
+    - 按钮双模式判断：需确认→功能卡片模式；查看类→直接跳转(toast)
+- **Acceptance Criteria Addressed**: AC-5, AC-9, AC-15, AC-18
+- **Test Requirements**:
+  - `programmatic` TR-9.1: 各行业各状态按钮组合符合PRD规则矩阵
+  - `programmatic` TR-9.2: 退款状态无退款按钮；待支付仅红色立即支付
+  - `human-judgement` TR-9.3: 按钮样式统一，立即支付唯一红色
+
+## [ ] Task 10: 引导问题排序完善+商家标签
+- **Priority**: high
+- **Depends On**: Task 8
+- **Description**:
+  - 在现有 GUIDED_QUESTIONS_MATRIX 基础上完善：
+    - 前端对接后端 /api/orders/:id/guide-questions 获取排序后问题（后端实现三层算法）
+    - 排除清单过滤（食品安全/投诉/异物等负向问题P0=0不展示）
+    - 对话轮次联动（新会话3个/≤5轮移除已回答+P3/>5轮1-2个/>20轮不展示）
+    - 商家预设问题：带橙色「商家」标签展示，最多2个
+    - 退款问题不主动引导
+    - 多卡片场景精简卡不展示引导问题
+    - L3降级使用前端静态规则排序
+    - L2降级引导问题层完全隐藏
+- **Acceptance Criteria Addressed**: AC-8, AC-13, AC-14, AC-18
+- **Test Requirements**:
+  - `programmatic` TR-10.1: 引导问题≤3个
+  - `programmatic` TR-10.2: 排除清单问题不出现
+  - `human-judgement` TR-10.3: 商家预设问题带「商家」橙色标签
+  - `human-judgement` TR-10.4: L2降级引导层隐藏；L3静态排序
+
+## [ ] Task 11: 功能卡片组件（7+1类）UI实现
+- **Priority**: high
+- **Depends On**: Task 7
+- **Description**:
+  - 在 components/AiAssistant/ 下新建 FeatureCards/ 目录，实现以下功能卡片组件：
+    - ReminderCard（使用提醒）：8个快捷选项（今天/明天/后天/本五六日/下五六日，按当前日期动态计算）+自定义天数步进器(1-30默认3)+提醒方式勾选(APP推送+短信默认勾选)+预览文案"将于X月X日10:00提醒您"+去重(明天/后天优先本周)+超有效期置灰+[取消][确认设置]+已设置状态([修改提醒][取消提醒])
+    - ReservationCard（预约表单）：日期选择器(已约满灰色标记)+时段单选+人数步进器(1-10)+联系电话(只读可修改)+⚠️"预约成功后不可取消"+[取消][确认预约]+提交loading
+    - UrgentCard（加急请求）：自动加急文案+备注输入(≤50字)+[取消][发送加急]+15min冷却状态(发送时间+[再次加急])
+    - ReorderCard（再来一单）：商品摘要+数量步进器+优惠券mock+预计实付+⚠️提示+[取消][立即下单]→toast"跳转收银台"
+    - RefundCard（退款申请）：退款金额(大字)+后端动态退款说明+原因四选一(不想要了/商家原因/计划有变/其他)+其他原因文本框+[取消][确认退款]
+    - GuideCard（攻略/指引）：游玩攻略(推荐时段/时长/里程/摘要/路线)/入住指引(入住退房时间/地址/电话/停车/须知)/出行指引(出发时间/集合点/天数/紧急联系人/注意事项)+[导航][查看详情]
+    - MerchantNoticeCard（商家紧急通知）：商家名+通知全文+发送时间+动态操作按钮(改期/退款/联系商家/导航等)
+  - 功能卡片通用规则：同时只能展开一个（新卡片关闭旧的）、表单校验必填未填确认按钮置灰、提交loading防重复、10s超时toast
+  - 在 aiAssistant.css 中添加功能卡片样式
+- **Acceptance Criteria Addressed**: AC-7, AC-9, AC-14, AC-18
+- **Test Requirements**:
+  - `human-judgement` TR-11.1: 提醒快捷选项按当天日期正确计算，去重正确
+  - `programmatic` TR-11.2: 加急提交后15min冷却
+  - `human-judgement` TR-11.3: 退款卡片金额+原因+确认交互正确
+  - `human-judgement` TR-11.4: 同时只能展开一个卡片
+  - `human-judgement` TR-11.5: 表单校验→必填未填确认按钮置灰
+
+## [ ] Task 12: 对话流程编排+退款/待支付挽留完善
+- **Priority**: high
+- **Depends On**: Task 11
+- **Description**:
+  - 在现有 useAiAssistant + mockChatService 基础上对接后端API，完善对话流程：
+    - 用户发送消息→添加用户消息→typing动画→调用POST /api/chat→渲染AI回复（文本+功能卡片指令+卡片更新+引导问题更新）
+    - 操作层按钮点击：功能卡片模式→聊天流中展开对应FeatureCard；直接跳转模式→toast模拟
+    - 引导问题点击→自动发送文本
+    - 功能卡片提交→调用对应API→AI回复结果→关闭卡片
+    - 完善退款挽留完整流程（验证现有逻辑：首次说退→挽留→坚持退→退款卡片；"我再想想"→关闭流程）
+    - 完善待支付取消挽留（四维度稀缺性：优惠+库存+活动+历史，文案组合规则：1维度直展/2维度"且"连接/3+维度取TOP2）
+    - 补全各场景差异化挽留文案（团购券/预售券/日历房/配送中/点单中）
+    - 完善埋点console.log
+- **Acceptance Criteria Addressed**: AC-6, AC-7, AC-9, AC-18, AC-19
+- **Test Requirements**:
+  - `human-judgement` TR-12.1: 首次"我要退款"挽留无退款按钮；再次"退掉吧"展示退款卡片
+  - `human-judgement` TR-12.2: 待支付"取消"展示稀缺性挽留，坚持取消→取消确认
+  - `human-judgement` TR-12.3: 引导问题点击自动发送文本
+  - `human-judgement` TR-12.4: 功能按钮正确展开卡片或toast跳转
+  - `programmatic` TR-12.5: 关键交互有console.log埋点
+
+## [ ] Task 13: 多轮对话上下文+订单切换完善
+- **Priority**: high
+- **Depends On**: Task 12
+- **Description**:
+  - 在现有会话管理基础上完善：
+    - 消息20条上限截断（已有逻辑需验证）
+    - 跨订单切换4步清理：保存快照→清理current_order_id/order_context/resolved_questions/pending_action（message_history保留）→AI发送切换确认消息→新卡片+新引导问题
+    - 待操作卡片15min过期：定时器自动关闭+提示"操作已超时，请重新发起"
+    - 关闭浮层30min内再打开恢复上下文（已有基本逻辑，需验证）
+    - 订单选择器弹窗完善（底部"选择订单"按钮→展开订单列表→选中切换）
+    - 会话30min过期逻辑
+- **Acceptance Criteria Addressed**: AC-10, AC-18
+- **Test Requirements**:
+  - `human-judgement` TR-13.1: 切换订单后聊天记录保留、已回答问题清空
+  - `programmatic` TR-13.2: 消息达20条最早消息移除
+  - `human-judgement` TR-13.3: 功能卡片15min自动关闭+超时提示
+  - `human-judgement` TR-13.4: 订单选择器可展开并切换
+
+## [ ] Task 14: WebSocket实时状态同步+轮询兜底
+- **Priority**: high
+- **Depends On**: Task 12
+- **Description**:
+  - 新建 hooks/useWebSocket.ts：
+    - 连接 ws://localhost:3001/ws
+    - 自动重连（3s间隔+指数退避，最多5次）
+    - 断连降级15s轮询 GET /api/orders/:id/latest-state
+    - 消息处理：state_change→更新订单卡片+操作按钮+引导问题；bubble_push→触发气泡；merchant_notice→展示商家通知卡片；weather_warning→极端天气卡片
+  - 5种卡片状态更新规则：
+    - 配送中→已送达：CollapsibleTimeline+[再来一单]
+    - 待预约→预约确认中：蓝色角标+提示
+    - 预约确认中→成功：绿色角标+预约成功+[导航][入住指引]
+    - 退款中→成功：RefundSuccessInfo+灰色角标
+    - 任意→退款中：RefundingInfo+蓝色角标
+  - 边界处理：操作卡片时不打断（后台更新+完提示）、退款对话中不中断、2s内重复变更合并、重连后全量拉取
+- **Acceptance Criteria Addressed**: AC-12, AC-18
+- **Test Requirements**:
+  - `human-judgement` TR-14.1: 调用POST /api/simulate/state-change后卡片实时更新
+  - `human-judgement` TR-14.2: WS断连时轮询生效
+  - `human-judgement` TR-14.3: 操作卡片时状态变更不打断
+
+## [ ] Task 15: 极端天气+22种消息触达+特殊场景
+- **Priority**: medium
+- **Depends On**: Task 6, Task 7
+- **Description**:
+  - 在constants.ts中定义22种消息类型配置表（key/名称/图标/颜色/优先级/适用行业/文案模板）
+  - 完善NotificationBar消息通知条轮转逻辑（最多3条/优先级0-降序/5s轮转）
+  - 极端天气专项：
+    - 18种气象→6大分类映射
+    - 橙/红/黄三级颜色
+    - 正向牵引文案：橙色"今天有雨，记得带伞哦~出行注意安全"；红色"暴雨预警，建议您暂缓出行，安全第一"；不引导退款/改期
+    - 极端天气引导问题："查看天气详情"/"出行注意事项"
+  - 攻略/指引内容模板完善（游玩攻略/入住指引/出行指引详细内容模板）
+  - 特殊场景文案：自动核销提醒、防诈提示、临期提醒、闭店提醒、门店停业、消费券限制、先用后付扣款失败、演出变更等
+- **Acceptance Criteria Addressed**: AC-11, AC-18
+- **Test Requirements**:
+  - `human-judgement` TR-15.1: 极端天气红色预警正向牵引文案不引导退款
+  - `human-judgement` TR-15.2: 消息通知条≤3条按优先级轮转
+  - `human-judgement` TR-15.3: 攻略/指引卡片内容完整
+  - `human-judgement` TR-15.4: 22种消息类型均有配置
+
+## [ ] Task 16: AI三级降级+Demo控制面板
+- **Priority**: medium
+- **Depends On**: Task 5, Task 10
+- **Description**:
+  - 在AiAssistantProvider中完善降级状态管理
+  - L1部分降级：引导问题→静态规则、上下文→单轮、功能卡片/按钮/挽留正常
+  - L2完全降级：引导层隐藏、输入框disabled+placeholder升级中、功能卡片禁用→全部直接跳转toast、退款禁用→提示去详情页、气泡正常、顶部黄色提示条
+  - L3引导问题降级：仅引导问题静态排序，其他正常
+  - **新增** Demo调试控制面板（页面底部浮动小按钮，开发模式可见）：
+    - 手动切换降级级别（正常/L1/L2/L3）
+    - 重置会话按钮
+    - 模拟状态变更快捷按钮（配送中→已送达、待预约→预约成功、退款中→退款成功）
+    - 模拟极端天气按钮
+    - 模拟商家通知按钮
+- **Acceptance Criteria Addressed**: AC-13, AC-18
+- **Test Requirements**:
+  - `human-judgement` TR-16.1: L2降级引导层隐藏+输入框禁用+全部直接跳转
+  - `human-judgement` TR-16.2: L1单轮但卡片可用；L3仅引导问题静态
+  - `human-judgement` TR-16.3: Demo控制面板可切换各级别和触发模拟事件
+
+## [ ] Task 17: 转人工/商家兜底机制
+- **Priority**: medium
+- **Depends On**: Task 12, Task 5
+- **Description**:
+  - 转人工客服5触发条件：
+    - 用户说"转人工"/"找客服"/"人工服务"
+    - 连续2次AI回复"抱歉，我没有理解您的意思"
+    - 超出能力边界（跨账号/修改地址等8类场景）
+    - 情绪关键词（"投诉"/"太差了"/"什么垃圾"）
+    - 会话>8轮未解决（Demo简化）
+  - 转人工流程：确认消息"正在为您转接人工客服，请稍候..."→展示TransferWaitingCard（7字段上下文摘要mock）→2s后"转接成功"→顶部变更为"人工客服"+头像+在线状态→模拟人工发送消息→用户可继续对话
+  - 转商家沟通3触发条件：
+    - 商家问题（"商家电话"/"联系商家"）
+    - 履约需商家处理（预约改期/退款协商/特殊需求）
+    - 不可退场景
+  - 转商家流程：引导消息→[联系商家](toast IM)/[拨打电话](toast拨号)；不可联系→[转人工客服]
+  - 8类无法解决场景正确处理（食品安全/人身安全最高优先级）
+  - 兜底监控console.log
+- **Acceptance Criteria Addressed**: AC-19, AC-18
+- **Test Requirements**:
+  - `human-judgement` TR-17.1: "转人工"触发流程，顶部标识变更
+  - `human-judgement` TR-17.2: 连续2次无法理解自动转人工
+  - `human-judgement` TR-17.3: "食品安全"最高优先级转人工
+  - `human-judgement` TR-17.4: 商家问题展示联系商家/拨打电话
+  - `programmatic` TR-17.5: 转人工/商家触发有console.log
+
+## [ ] Task 18: App Demo页面整合+UI精修+mock数据完善
+- **Priority**: high
+- **Depends On**: Task 6, Task 9
+- **Description**:
+  - 在现有 App.tsx 基础上完善Demo页面：
+    - 顶部Tab：[订单列表]（商家端工作台暂不做，留空Tab或移除）
+    - 订单列表页：订单卡片列表（五大行业×各状态mock订单），右上角AI入口A，点击进入详情
+    - 订单详情页：完整订单信息，左下角入口B（非待支付AI图标/待支付红色金额），顶部消息通知条
+    - Demo调试控制条（底部浮动）：重置会话、模拟状态变更、降级面板、模拟天气/商家通知快捷按钮
+  - Mock订单数据完善（前端mock和后端seed都要覆盖）：
+    - 餐饮：团购券待使用、点单配送中(配送地图)、点单已送达、纯券码已核销
+    - 酒店：预售券待预约、已预约待入住(入住指引)、日历房已确认、已入住
+    - 景区：团购待使用(游玩攻略)、预售券待预约、已使用
+    - 综合：演出待观看、KTV待使用、电影待观影
+    - 旅行社：待出行(出行指引+倒计时)、行程中、已完成
+    - 待支付（餐饮团购，支付倒计时）
+    - 退款中
+  - UI精修（严格遵循PRD §13）：
+    - 卡片圆角12px白底、间距12px、内边距12px
+    - 主标题15px #1F2937 500、次要12px #6B7280 400、价格15px #1F2937 600
+    - 按钮白底+1px #E5E7EB+#6B7280+圆角8px；立即支付唯一#FE2C55红色
+    - 状态角标颜色：橙/红/蓝/绿/灰
+    - 导航SVG斜箭头(-45°)14×14px #6B7280
+    - 无实线分割线
+    - 引导按钮垂直右对齐间距6px
+    - 浮层动画300ms
+    - 移动端375px基准，320-430px兼容
+    - CSS .ai- 前缀
+  - 所有图标SVG内联/emoji，不引入图标库
+- **Acceptance Criteria Addressed**: AC-15, AC-18, AC-20, NFR-1, NFR-4, NFR-5
+- **Test Requirements**:
+  - `human-judgement` TR-18.1: Demo页面完整展示列表+详情
+  - `human-judgement` TR-18.2: 五大行业各状态mock订单完整
+  - `human-judgement` TR-18.3: UI严格符合PRD规范（圆角/按钮/角标/无分割线/间距）
+  - `human-judgement` TR-18.4: 立即支付唯一红色；移动端375px无溢出
+  - `programmatic` TR-18.5: 前后端build零错误

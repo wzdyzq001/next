@@ -1,0 +1,252 @@
+import type { MessageAction, RedeemReminder } from '../../types';
+
+export type OrderCategory = 'food' | 'hotel' | 'scenic' | 'general' | 'travel';
+
+export type ProductType = 'voucher' | 'order_takeout' | 'calendar';
+
+export type OrderStatus =
+  | 'pending_payment'
+  | 'pending_use'
+  | 'pending_booking'
+  | 'confirmed'
+  | 'in_delivery'
+  | 'completed'
+  | 'refunding'
+  | 'refunded'
+  | 'refund_card'
+  | 'refund_failed'
+  | 'canceled';
+
+export interface OrderHotelInfo {
+  checkInTime?: string;
+  checkOutTime?: string;
+  breakfast?: string;
+  roomFacilities?: string[];
+  hotelPolicy?: string[];
+}
+
+export interface OrderScenicInfo {
+  visitTime?: string;
+  ticketType?: string;
+  ticketCount?: number;
+  visitorName?: string;
+}
+
+export interface OrderTravelInfo {
+  departureTime?: string;
+  arrivalTime?: string;
+  departureStation?: string;
+  arrivalStation?: string;
+  seatClass?: string;
+  passenger?: string;
+}
+
+export interface OrderData {
+  id: string;
+  orderNo: string;
+  category: OrderCategory;
+  productType: ProductType;
+  productName: string;
+  productImage: string;
+  price: number;
+  originalPrice?: number;
+  tags: string[];
+  storeName: string;
+  status: OrderStatus;
+  subStatus?: string;
+  quantity: number;
+  validityPeriod?: string;
+  distance?: string;
+  storePhone?: string;
+  storeAddress?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  visitDate?: string;
+  roomType?: string;
+  visitorCount?: number;
+  redeemMethod?: string;
+  deliveryStatus?: string;
+  deliveryRiderName?: string;
+  deliveryDistance?: string;
+  deliveryEta?: string;
+  pickupCode?: string;
+  payExpireAt?: number;
+  hotelInfo?: OrderHotelInfo;
+  scenicInfo?: OrderScenicInfo;
+  travelInfo?: OrderTravelInfo;
+  guideContent?: string;
+  weatherWarning?: string;
+}
+
+export type EntrySource = 'order_list' | 'order_detail' | 'bubble';
+
+export type BubbleType = 'persistent_short' | 'temporary_short' | 'long_collapsible';
+
+export interface BubbleConfig {
+  id: string;
+  type: BubbleType;
+  orderId: string;
+  text: string;
+  expandedText?: string;
+  eventType: string;
+  autoHideAfter?: number;
+  priority: number;
+}
+
+export type OverlayMode = 'minimized' | 'fullscreen' | 'closed';
+
+export type DegradeLevel = 'none' | 'L1' | 'L2' | 'L3';
+
+export interface GuidedQuestion {
+  id: string;
+  question: string;
+  score: number;
+  priority: 0 | 1 | 2 | 3;
+  category?: string;
+  status?: string;
+}
+
+export type MessageRole = 'user' | 'assistant' | 'system';
+
+export type MessageContentType = 'text' | 'system_notice';
+
+export interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  contentType: MessageContentType;
+  content?: string;
+  quickReplies?: GuidedQuestion[];
+  actions?: MessageAction[];
+  redeemReminder?: RedeemReminder;
+  reservationInfo?: any;
+  timestamp: number;
+  status?: 'sending' | 'sent' | 'error';
+}
+
+export interface ConversationContext {
+  sessionId: string;
+  currentOrderId?: string;
+  orderContext?: {
+    category?: string;
+    productType?: string;
+    status?: string;
+    refundStage?: 'none' | 'persuading' | 'confirming';
+  };
+  resolvedQuestions: string[];
+  conversationTurns: number;
+  createdAt: number;
+  lastActiveAt: number;
+}
+
+export interface AiAssistantState {
+  overlayMode: OverlayMode;
+  entrySource: EntrySource;
+  currentOrderId?: string;
+  currentOrder?: OrderData;
+  sessionId: string;
+  context: ConversationContext;
+  messages: ChatMessage[];
+  degradeLevel: DegradeLevel;
+  currentBubble?: BubbleConfig;
+  isLoading: boolean;
+  hasUnread: boolean;
+  bubbleEventContext?: {
+    eventType: string;
+    orderId: string;
+  };
+  reminderSheetOpen: boolean;
+  reminderSheetOrderId: string | null;
+  reminderSheetProductName?: string;
+  reminderSheetValidDate?: string;
+  reservationPanelOpen: boolean;
+  reservationStoreName: string;
+  reservationBusinessHours?: string;
+}
+
+export interface AiAssistantContextValue extends AiAssistantState {
+  openAssistant: (orderId?: string, source?: EntrySource) => void;
+  closeAssistant: () => void;
+  toggleFullscreen: () => void;
+  sendMessage: (message: string) => Promise<void>;
+  triggerBubble: (bubble: BubbleConfig) => void;
+  clickBubble: () => void;
+  hideBubble: () => void;
+  markAsRead: () => void;
+  switchOrder: (orderId: string) => void;
+  executeAction: (action: MessageAction) => void;
+  clickGuidedQuestion: (question: GuidedQuestion) => void;
+  submitFeatureCard: (cardType: string, data: Record<string, unknown>) => void;
+  cancelFeatureCard: () => void;
+  checkServiceHealth: () => Promise<void>;
+  setDegradeLevel: (level: DegradeLevel) => void;
+  resetSession: () => void;
+  transferHuman: 'idle' | 'transferring' | 'chatting';
+  setTransferHuman: (state: 'idle' | 'transferring' | 'chatting') => void;
+  wsState: WSConnectionState;
+  showToast: (text: string) => void;
+  dismissNotification: () => void;
+  openReminderSheet: (orderId: string, productName?: string, validDate?: string) => void;
+  closeReminderSheet: () => void;
+  confirmReminder: (reminder: RedeemReminder) => void;
+  openReservationPanel: (storeName: string, businessHours?: string) => void;
+  closeReservationPanel: () => void;
+  confirmReservation: (data: any) => void;
+}
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  errorCode?: string;
+}
+
+export interface HealthCheckResponse {
+  status: 'healthy' | 'degraded' | 'unavailable';
+  degradeLevel?: DegradeLevel;
+}
+
+export type WSConnectionState = 'connecting' | 'connected' | 'disconnected' | 'polling';
+
+export interface StateChangePayload {
+  orderId: string;
+  status: string;
+  subStatus?: string;
+  statusText?: string;
+  timestamp?: number;
+}
+
+export interface BubblePushPayload {
+  orderId: string;
+  bubbleType: 'persistent_short' | 'temporary_short' | 'long_collapsible';
+  text: string;
+  expandedText?: string;
+  eventType: string;
+  priority?: number;
+}
+
+export interface MerchantNotice {
+  id: string;
+  merchantName: string;
+  noticeType: string;
+  title: string;
+  content: string;
+  orderIds?: string[];
+  actionButton?: string;
+  timestamp?: number;
+}
+
+export interface WeatherWarning {
+  id: string;
+  level: 'blue' | 'yellow' | 'orange' | 'red';
+  weatherType: string;
+  advice: string;
+  affectedAreas?: string[];
+  timestamp?: number;
+}
+
+export interface OrderLatestState {
+  orderId: string;
+  status: string;
+  subStatus?: string;
+  statusText?: string;
+}

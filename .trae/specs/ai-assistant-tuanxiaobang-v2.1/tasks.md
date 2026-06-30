@@ -1,0 +1,463 @@
+# 团小帮 V2.1 - Implementation Plan
+
+## 项目结构说明
+- **前端项目**: `/Users/bytedance/Downloads/AI智能助手V2.1/` (已有 V2.0 基础)
+- **后端项目**: `/Users/bytedance/Downloads/AI智能助手V2.1-server/` (待创建, 独立项目)
+- **开发分支**: `feature/ai-assistant-v2.1`
+- AI 助手前端代码隔离在 `src/components/AiAssistant/` 目录下
+
+---
+
+## [ ] Task 1: 后端项目初始化与基础架构搭建
+- **Priority**: high
+- **Depends On**: None
+- **Description**:
+  - 创建独立后端项目目录 `AI智能助手V2.1-server/`
+  - 初始化 Node.js + TypeScript + Fastify 项目
+  - 配置 Prisma ORM + SQLite
+  - 设计并创建数据库 Schema（订单、对话历史、引导问题、提醒设置、预约记录等表）
+  - 建立基础项目结构（routes/services/middlewares/types）
+  - 配置 CORS 允许前端访问
+  - 实现健康检查接口 GET /health
+  - 导入初始 mock 数据（基于前端 mock.ts 的 16 个场景 + 30+ 订单列表数据）
+- **Acceptance Criteria Addressed**: AC-14
+- **Test Requirements**:
+  - `programmatic` TR-1.1: `npm run build` 编译通过无 TS 错误
+  - `programmatic` TR-1.2: `npm run dev` 启动服务，GET /health 返回 200
+  - `programmatic` TR-1.3: Prisma migration 成功执行，SQLite 数据库文件创建
+  - `programmatic` TR-1.4: GET /api/orders 返回订单列表数据
+
+## [ ] Task 2: 后端核心 API 实现（订单+对话+引导问题）
+- **Priority**: high
+- **Depends On**: Task 1
+- **Description**:
+  - 实现订单 CRUD 接口：GET /api/orders, GET /api/orders/:id
+  - 实现引导问题接口：GET /api/guided-questions?orderId=xxx&industry=xxx&status=xxx
+    - 内置引导问题矩阵数据（PRD §11.4 各行业×状态的TOP3问题）
+    - 实现基础排序逻辑（离线权重P0_score，mock CTR和上下文分数）
+  - 实现 AI 对话接口：POST /api/chat
+    - 接收 message + orderId + sessionId + context
+    - 基于规则引擎做意图识别（关键词匹配）
+    - 返回 AI 回复文本 + 可选的卡片更新指令 + 可选的操作建议
+    - 支持的意图：查订单状态、查配送进度、查取餐码、退款意图、退款挽留响应、查券码、查门店信息、设置提醒、预约、加急、再来一单、支付、查退款规则、查商品信息、极端天气、游玩攻略
+  - 实现对话历史接口：GET /api/chat/history?sessionId=xxx
+  - 实现退款能力判断接口：POST /api/refund/capability
+    - 接收 orderId + currentTime
+    - mock 返回 full_refund/partial_refund/non_refundable/cancelable + 退款文案
+- **Acceptance Criteria Addressed**: AC-5, AC-6, AC-8, AC-14
+- **Test Requirements**:
+  - `programmatic` TR-2.1: GET /api/orders/:id 返回完整订单数据（含扩展信息）
+  - `programmatic` TR-2.2: GET /api/guided-questions 餐饮待使用返回≤3个问题，包含"怎么使用""查看券码"
+  - `programmatic` TR-2.3: POST /api/chat 发送"我要退款"返回挽留话术（非直接退款）
+  - `programmatic` TR-2.4: POST /api/refund/capability 返回退款能力结果+文案
+  - `programmatic` TR-2.5: 所有API响应时间<500ms
+
+## [ ] Task 3: 后端功能操作 API + WebSocket
+- **Priority**: high
+- **Depends On**: Task 2
+- **Description**:
+  - 实现提醒设置接口：POST /api/reminders, PUT /api/reminders/:id, DELETE /api/reminders/:id
+  - 实现预约提交接口：POST /api/reservations（含日期/时段/人数校验，mock库存检查）
+  - 实现加急请求接口：POST /api/urgent-requests（含15分钟冷却校验）
+  - 实现再来一单接口：POST /api/reorder
+  - 实现退款提交接口：POST /api/refund/submit
+  - 配置 WebSocket (fastify-websocket)：
+    - ws://host/ws 连接入口
+    - 客户端连接后可订阅订单状态变更
+    - 提供 mock 状态变更触发接口 POST /api/mock/order-status-update（用于Demo演示状态推送）
+  - 实现会话管理：创建/获取/过期会话
+- **Acceptance Criteria Addressed**: AC-6, AC-7, AC-14
+- **Test Requirements**:
+  - `programmatic` TR-3.1: POST /api/reminders 创建提醒成功，返回提醒时间
+  - `programmatic` TR-3.2: POST /api/urgent-requests 15分钟内重复请求返回冷却提示
+  - `programmatic` TR-3.3: POST /api/reservations 预约提交后返回确认中状态
+  - `programmatic` TR-3.4: WebSocket 连接成功，能收到模拟的订单状态变更消息
+  - `programmatic` TR-3.5: 对话历史按 sessionId 正确存取
+
+## [ ] Task 4: 前端 AI 助手组件架构搭建 + 类型定义
+- **Priority**: high
+- **Depends On**: None (可与后端并行)
+- **Description**:
+  - 在前端 `src/components/AiAssistant/` 下创建目录结构：
+    - `types.ts` - AI 助手相关类型定义（ChatMessage、ConversationContext、BubbleConfig、OrderCardState 等）
+    - `AiAssistantProvider.tsx` - Context Provider，管理全局 AI 状态（是否打开、当前订单、会话、浮层形态）
+    - `useAiAssistant.ts` - 自定义 Hook，封装对话逻辑、API 调用、WebSocket
+    - `mockChatService.ts` - Mock 对话服务（当后端不可用时使用，保证Demo可独立运行）
+    - `api.ts` - 后端 API 客户端
+  - 扩展现有类型：在 types.ts 中增加 AI 助手所需的类型（不修改现有类型）
+  - 创建 AI 助手入口触发逻辑：修改 App.tsx 的 handleChatWithOrder 支持打开 AI 助手浮层
+  - 确保代码通过 Git 分支隔离，新增代码全部在 AiAssistant 目录下
+- **Acceptance Criteria Addressed**: AC-1
+- **Test Requirements**:
+  - `programmatic` TR-4.1: `npx tsc --noEmit` 零编译错误
+  - `programmatic` TR-4.2: AiAssistantProvider 正确包裹 App，状态可在子组件访问
+  - `human-judgement` TR-4.3: 目录结构清晰，组件分层明确（基础层/扩展层/操作层/引导层分离）
+
+## [ ] Task 5: AI 浮层框架 + 三种形态切换
+- **Priority**: high
+- **Depends On**: Task 4
+- **Description**:
+  - 实现 AiAssistantOverlay 组件：
+    - 9分屏（默认）：top: 10%，圆角顶部 16px，从底部滑入动画
+    - 全屏：top: 0，平滑过渡
+    - 关闭：向下滑出动画
+  - 实现顶部区域：AIAssistantIcon + "团小帮" + "全程陪伴，省心又省力" + 关闭按钮
+  - 实现中间聊天消息区域：消息列表组件，支持 AI 消息/用户消息/卡片消息/系统消息
+  - 实现底部输入区域：输入框 + 发送按钮 + 订单选择器Tag（当前关联订单显示为可关闭标签）
+  - 手势交互：上滑→全屏、下滑→关闭、点击外部区域→关闭
+  - 遮罩层：浮层下方半透明黑色遮罩
+  - 动画：300ms CSS transition
+- **Acceptance Criteria Addressed**: AC-3, AC-13
+- **Test Requirements**:
+  - `human-judgement` TR-5.1: 浮层从底部滑入，9分屏时顶部露出1/10底层页面
+  - `human-judgement` TR-5.2: 上滑平滑过渡到全屏，下滑/点击外部/点击关闭按钮均可关闭
+  - `human-judgement` TR-5.3: 顶部区域品牌展示正确（团小帮+Slogan）
+  - `human-judgement` TR-5.4: 输入框可输入文字，点击发送创建用户消息气泡
+
+## [ ] Task 6: 三种入口实现（固定入口A/B + 气泡推送）
+- **Priority**: high
+- **Depends On**: Task 5
+- **Description**:
+  - **固定入口A**（列表页右上角）：复用现有 AIAssistantIcon 位置，点击打开助手（不带订单）
+  - **固定入口B**（详情页左下角）：
+    - 在 OrderDetail 页面底部左侧添加圆形 AI 助手按钮（非待支付订单）
+    - 待支付订单在同一位置展示应付金额（红色大字）替代 AI 入口
+    - 点击左下角 AI 入口打开助手并自动带入当前订单
+  - **气泡推送系统**（BubblePushSystem）：
+    - 实现三种气泡组件：
+      - PermanentShortBubble（常驻短气泡，≤7字）
+      - TemporaryShortBubble（临时短气泡，≤7字，3-5s后自动消失动画）
+      - LongBubble（展开态≤30字/1行，5s或滚动后收折为≤7-8字短气泡，可点击）
+    - 气泡位置：屏幕底部（左下角入口上方浮动）
+    - 气泡频控逻辑：同订单同状态节点仅推送1次
+    - 点击气泡：打开助手，带入 orderId + eventType 上下文
+    - 待支付订单不推送气泡
+  - 修改 OrderCenter.tsx 集成左下角入口和气泡容器
+  - 列表页右上角图标添加未读消息红点（8×8px，白色描边）
+- **Acceptance Criteria Addressed**: AC-1, AC-2, AC-9
+- **Test Requirements**:
+  - `programmatic` TR-6.1: 待支付订单详情页不渲染左下角AI入口，渲染应付金额
+  - `human-judgement` TR-6.2: 点击右上角图标打开助手，无预载订单卡片
+  - `human-judgement` TR-6.3: 点击左下角AI入口打开助手，自动带入当前订单四层卡片
+  - `human-judgement` TR-6.4: 临时短气泡弹出后3-5秒自动淡出消失
+  - `human-judgement` TR-6.5: 长气泡展开态单行≤30字，收折后≤8字，点击可进入助手
+  - `human-judgement` TR-6.6: 气泡点击进入后上下文正确（气泡事件对应卡片和AI首条消息）
+
+## [ ] Task 7: 四层订单卡片组件实现
+- **Priority**: high
+- **Depends On**: Task 5
+- **Description**:
+  - 实现 AiOrderCard 四层卡片组件：
+    - BaseLayer（基础层）：缩略图+商品名+价格+标签（最多3个）+距离+门店名+导航/电话图标+状态角标
+    - ExtensionLayer（扩展层）：按行业×状态动态渲染子组件
+    - ActionLayer（操作层）：按状态机渲染按钮组
+    - GuidedQuestionsLayer（引导问题层）：≤3个问题标签，垂直排列
+  - 实现扩展层子组件：
+    - FulfillmentTimeline：履约进度条（节点done/current/pending状态）
+    - CollapsibleTimeline：可折叠进度
+    - PickupCodeDisplay：取餐码展示（二维码+大字码）
+    - DeliveryProgress：配送进度（骑手信息+预计时间）
+    - HotelStayInfo：酒店入住信息
+    - ScenicVisitInfo：景区入园信息
+    - TravelDepartureInfo：旅行社出行信息
+    - RefundingInfo：退款申请中
+    - RefundSuccessInfo：退款成功
+    - PaymentCountdown：支付倒计时内联
+  - 扩展层智能裁剪逻辑：
+    - 首次展示→完整扩展层
+    - 追问场景→仅展示被追问模块
+    - 气泡带入→突出对应模块
+    - 多卡片→隐藏扩展层
+    - 退款对话→突出退款信息
+  - 状态角标颜色：橙=待支付、红=待使用、蓝=进行中、绿=已完成、灰=已取消
+  - 卡片样式：白底圆角12px，按PRD §13规范
+- **Acceptance Criteria Addressed**: AC-4, AC-13
+- **Test Requirements**:
+  - `programmatic` TR-7.1: 餐饮配送中订单卡片渲染配送进度+联系骑手/帮我加急按钮
+  - `programmatic` TR-7.2: 餐饮待使用纯券码卡片渲染[查看券码][订单使用提醒][提前预约免排队]
+  - `programmatic` TR-7.3: 待支付卡片渲染支付倒计时+红色立即支付按钮
+  - `human-judgement` TR-7.4: 卡片视觉符合设计规范（12px圆角、白底、按钮白色灰边框）
+  - `human-judgement` TR-7.5: 状态角标颜色正确
+
+## [ ] Task 8: 操作层全状态规则引擎
+- **Priority**: high
+- **Depends On**: Task 7
+- **Description**:
+  - 实现操作按钮配置矩阵（数据驱动）：
+    - 定义 OperationRule 类型：{ industry, productType, status, subStatus, buttons: OperationButton[] }
+    - OperationButton: { label, mode: 'feature-card' | 'redirect', action: string, primary?: boolean, style?: 'red' }
+  - 覆盖餐饮所有状态组合：
+    - 待支付：仅[立即支付]（red）
+    - 待使用-纯券码：[查看券码→redirect][订单使用提醒→feature][提前预约免排队→feature]
+    - 待使用-含点单：[立即点单→feature][查看券码→redirect]（含配送时加[立即配送→feature]，隐藏提前预约）
+    - 配送中：[联系骑手→redirect][帮我加急→feature]
+    - 退款中：RefundingInfo+[帮我加急(催退款)→feature]
+    - 已完成：[再来一单→feature][去评价→redirect]
+    - 已取消：[再来一单→feature]
+  - 覆盖酒店（预售券+日历房）：待预约/预订确认中/预订成功/已入住/交易完成/退款中
+  - 覆盖景区（团购+预售券+日历票）：待使用/预订确认中/预订成功/交易完成/退款中
+  - 覆盖综合：待使用/交易完成/退款中
+  - 覆盖旅行社（预售券）：待预约/预约确认中/预约成功
+  - 确保无"申请退款"按钮外露
+  - 按钮布局：主操作按钮横向一行，引导功能按钮垂直堆叠右对齐间距6px
+- **Acceptance Criteria Addressed**: AC-5, AC-13
+- **Test Requirements**:
+  - `programmatic` TR-8.1: 餐饮6种核销方式组合的按钮组合正确
+  - `programmatic` TR-8.2: 所有状态下操作层均无"申请退款"按钮
+  - `programmatic` TR-8.3: 酒店日历房预订成功展示[入住指引]，景区日历票预订成功展示[一站式游玩攻略]
+  - `programmatic` TR-8.4: 立即支付按钮为红色背景白色文字，其余按钮为白色灰边框
+  - `human-judgement` TR-8.5: 引导按钮垂直右对齐，间距6px
+
+## [ ] Task 9: 引导问题层 + 排序展示
+- **Priority**: high
+- **Depends On**: Task 7, Task 2
+- **Description**:
+  - 实现 GuidedQuestionsLayer 组件：
+    - 从后端API获取引导问题（或mock数据）
+    - 最多展示3个问题标签
+    - 点击问题→发送消息（同用户输入该问题）
+    - 已回答问题标记/移除
+  - 实现前端引导问题数据 fallback（当后端不可用时使用静态数据）
+  - 内置各行业×状态的TOP3引导问题矩阵
+  - 对话轮次联动：>5轮减少为1-2个，>20轮隐藏
+  - 排除清单中的问题不展示
+  - 问题标签样式：白色背景灰边框圆角16px胶囊按钮，#6B7280文字
+  - "商家"标签预留（V2.1不实现但预留显示位置）
+- **Acceptance Criteria Addressed**: AC-8
+- **Test Requirements**:
+  - `programmatic` TR-9.1: 引导问题数量始终≤3
+  - `programmatic` TR-9.2: 点击引导问题触发消息发送和AI响应
+  - `programmatic` TR-9.3: 已回答的引导问题不再显示
+  - `human-judgement` TR-9.4: 引导问题标签为圆角胶囊样式，视觉一致
+
+## [ ] Task 10: 功能卡片实现（使用提醒+预约+加急+再来一单+退款）
+- **Priority**: high
+- **Depends On**: Task 7, Task 3
+- **Description**:
+  - 实现功能卡片基础组件 FeatureCard（统一卡片容器样式）
+  - 实现 ReminderCard（使用提醒设置）：
+    - 快捷选项计算：明天/后天/本周五/六/日/下周五/六/日，基于当前日期动态计算
+    - 过滤当天/已过去日期，明天/后天与本周日期重复时保留明天/后天
+    - 自定义提前天数步进器（1-30天，默认3天，与快捷选项联动）
+    - 提醒方式选择（APP推送/短信，Demo用checkbox模拟）
+    - 预览文案"将于X月X日10:00提醒您"
+    - [取消][确认设置]按钮
+    - 已设置状态：✅提示+[修改提醒][取消提醒]
+    - 超有效期日期置灰+标注"已超有效期"
+  - 实现 BookingFormCard（预约表单）：
+    - 日期选择器（mock日历，已约满日期灰色）
+    - 时段单选（按商家配置）
+    - 人数步进器（最小1，默认购买人数）
+    - 联系电话（只读，可修改）
+    - ⚠️预约成功后不可更改日期提示
+    - [取消][确认预约]按钮
+    - 预约确认中→成功/失败异步更新（通过WebSocket或mock轮询）
+  - 实现 UrgentRequestCard（加急请求）：
+    - 自动生成加急文案（根据订单状态）
+    - 备注文本输入（≤50字）
+    - [取消][发送加急]按钮
+    - 15分钟冷却校验
+    - 已发送状态：✅提示+发送时间
+  - 实现 ReorderCard（再来一单）：
+    - 商品信息展示+数量调整+优惠券选择（mock）
+    - [取消][立即下单]按钮
+  - 实现 RefundCard（退款申请）：
+    - 退款金额+后端返回的退款说明文案
+    - 退款原因四选一（不想要了/商家原因/计划有变/其他）
+    - [取消][确认退款]按钮
+  - 实现 GuideCard（攻略/指引）：
+    - mock攻略内容（游玩攻略/入住指引/出行指引）
+    - 内容区域+[导航][查看详情]按钮
+  - 功能卡片交互：点击操作按钮→在聊天流中插入功能卡片消息→用户填写→提交→AI回复结果消息
+- **Acceptance Criteria Addressed**: AC-7
+- **Test Requirements**:
+  - `programmatic` TR-10.1: 使用提醒快捷选项正确计算（当天日期不展示，明天/后天优先去重）
+  - `programmatic` TR-10.2: 加急请求15分钟内重复提交返回冷却提示
+  - `programmatic` TR-10.3: 退款申请卡片原因四选一+确认提交
+  - `human-judgement` TR-10.4: 功能卡片在聊天流中展开视觉正确
+  - `human-judgement` TR-10.5: 功能卡片提交后AI回复结果消息，形成完整对话流
+
+## [ ] Task 11: 对话引擎 + 退款挽留流程
+- **Priority**: high
+- **Depends On**: Task 9, Task 10, Task 2
+- **Description**:
+  - 实现前端对话状态管理：
+    - ChatMessage 类型：{ id, role: 'user'|'ai'|'system', type: 'text'|'order-card'|'feature-card', content, timestamp, cardData? }
+    - 消息列表渲染：用户消息右对齐浅蓝背景，AI消息左对齐白色背景
+    - AI 回复 loading 状态（三点动画）
+    - 自动滚动到底部
+  - 实现意图识别规则引擎：
+    - 关键词→意图映射（"退款""退了吧""不要了"→refund_intent）
+    - 上下文感知：已在退款挽留流程中→检测坚持退款/继续使用
+    - 多轮对话支持
+  - 实现退款挽留完整流程：
+    1. 用户输入"我要退款"→AI回复挽留消息（优惠稀缺+库存稀缺+有效期+替代方案）
+    2. 用户说"继续用""再想想"→引导使用（查券码/设置提醒等）
+    3. 用户说"还是退吧""就要退"→调用退款能力API→展示退款申请功能卡片
+  - 实现待支付取消挽留：用户说"不想买了""取消订单"→挽留（优惠稀缺+库存稀缺+活动稀缺）→坚持取消→mock取消
+  - 实现对话中追问上下文：
+    - 先问"骑手到哪了"→展示配送进度→追问"骑手电话"→展示骑手联系方式
+    - 先问"怎么用"→展示使用规则→追问"门店在哪"→展示门店信息
+  - 连接后端/使用mock：后端可用时调API，不可用时使用本地mock规则
+  - 欢迎语逻辑：
+    - 列表页入口→通用欢迎："您好，我是团小帮，全程陪伴，省心又省力！有什么可以帮您的？"
+    - 详情页入口→带入订单："您的XX订单..." + 订单卡片
+    - 气泡入口→气泡事件对应的首条消息
+- **Acceptance Criteria Addressed**: AC-6, AC-12
+- **Test Requirements**:
+  - `human-judgement` TR-11.1: 输入"我要退款"收到挽留消息而非直接退款
+  - `human-judgement` TR-11.2: 挽留后说"还是退吧"触发退款申请卡片
+  - `human-judgement` TR-11.3: 用户消息右对齐、AI消息左对齐，样式正确
+  - `human-judgement` TR-11.4: AI回复有loading三点动画
+  - `human-judgement` TR-11.5: 新消息自动滚动到底部
+  - `programmatic` TR-11.6: 配送中追问"骑手电话"能正确展示骑手信息
+
+## [ ] Task 12: 多轮对话上下文 + 订单切换
+- **Priority**: medium
+- **Depends On**: Task 11
+- **Description**:
+  - 实现 ConversationContext 管理：
+    - session_id 生成（首次打开生成UUID）
+    - current_order_id 跟踪
+    - resolved_questions Set
+    - message_history 持久化（内存+后端API）
+  - 会话过期：关闭浮层开始计时，30分钟内重新打开恢复上下文，超过30分钟新会话
+  - 订单切换逻辑：
+    - 底部订单选择器：点击展开订单列表，用户选择订单
+    - 切换时：消息历史保留、已回答问题清空、待操作卡片中断、引导问题重新匹配、退款上下文清空
+    - 切换后在聊天流中插入新订单卡片
+  - 对话轮次计数与引导问题联动：≤5轮完整展示，>5轮减少，>20轮隐藏
+  - 订单选择器标签：输入框上方显示当前关联订单Tag，可×关闭（关闭后无上下文订单）
+- **Acceptance Criteria Addressed**: AC-10
+- **Test Requirements**:
+  - `human-judgement` TR-12.1: 切换订单后聊天记录保留，但引导问题按新订单重新生成
+  - `human-judgement` TR-12.2: 订单Tag可关闭，关闭后回到通用对话模式
+  - `programmatic` TR-12.3: 已回答问题在切换订单后重新出现在引导问题中
+
+## [ ] Task 13: WebSocket 实时状态同步
+- **Priority**: medium
+- **Depends On**: Task 3, Task 11
+- **Description**:
+  - 前端 WebSocket 客户端：
+    - 建立 ws 连接（连接后端 ws://localhost:PORT/ws）
+    - 自动重连机制（3s间隔，指数退避）
+    - 降级到15s轮询（当WebSocket不可用时）
+  - 消息处理：
+    - order_status_update 事件→更新当前订单卡片状态+插入系统消息
+    - bubble_push 事件→触发气泡展示
+  - 卡片状态变更规则：
+    - 配送中→已送达：扩展层切换CollapsibleTimeline+操作层变[再来一单]+引导问题更新
+    - 预约确认中→预约成功：状态更新+[入住指引]/[出行指引]按钮
+    - 制作中→待取餐：进度更新
+  - 边界处理：
+    - 用户操作功能卡片时不打断→后台更新+操作完提示"订单状态已更新"
+    - 退款对话中不中断对话流程
+  - mock 触发按钮（Demo用）：在开发模式下提供触发状态变更的按钮/命令
+- **Acceptance Criteria Addressed**: AC-12
+- **Test Requirements**:
+  - `programmatic` TR-13.1: WebSocket连接成功，收到order_status_update事件后卡片状态实时更新
+  - `human-judgement` TR-13.2: 配送中→已送达切换时，进度折叠+按钮变更+引导问题更新
+  - `programmatic` TR-13.3: WebSocket断开后自动重连或降级到轮询
+
+## [ ] Task 14: 极端天气+特殊场景处理
+- **Priority**: medium
+- **Depends On**: Task 11
+- **Description**:
+  - 极端天气响应：
+    - 检测天气预警（mock数据触发）
+    - 正向牵引AI回复："关注天气变化，合理安排出行，建议携带雨具"
+    - 引导问题："查看天气详情""出行注意事项"
+    - 不主动引导改期/退款
+  - 异常处理组件：
+    - 订单加载失败→"订单信息加载失败"+[重试]
+    - AI意图解析失败→订单选择器引导手动选择
+    - 网络错误→提示+重试
+  - 边界条件：
+    - 商品名单行截断省略号
+    - 门店名单行截断
+    - 标签超3个只显示前3个
+    - 空字段处理（门店名为空不展示行等）
+  - 状态互斥：点单+配送并存按配送优先；退款状态优先于履约状态
+- **Acceptance Criteria Addressed**: AC-14
+- **Test Requirements**:
+  - `human-judgement` TR-14.1: 极端天气场景AI回复正向牵引，无退款引导
+  - `human-judgement` TR-14.2: 加载失败展示重试按钮
+  - `programmatic` TR-14.3: 退款状态优先展示
+
+## [ ] Task 15: AI 降级策略实现
+- **Priority**: medium
+- **Depends On**: Task 11
+- **Description**:
+  - 实现降级状态管理（AiAssistantProvider中）：
+    - degradeLevel: 'normal' | 'L1' | 'L2' | 'L3'
+  - L1部分降级（API超时>3s或错误率>5%）：
+    - 引导问题使用静态规则（不调排序API，直接匹配预置TOP3）
+    - 上下文降级为单轮问答（简化）
+  - L2完全降级（API不可用或错误率>20%）：
+    - 隐藏引导问题层（卡片四层→三层）
+    - 禁用文本输入框，placeholder展示"AI助手升级中，请使用下方按钮操作"
+    - 所有功能卡片禁用→操作按钮全部为redirect模式
+    - 退款禁用自然语言→提示"如需退款，请前往订单详情页操作"
+    - 气泡推送正常展示
+  - L3引导问题降级（仅排序降级，其余正常）
+  - 降级切换UI提示（L2时在顶部展示小提示条）
+  - 恢复机制：API恢复后自动灰度恢复（Demo中可通过mock开关触发）
+- **Acceptance Criteria Addressed**: AC-15
+- **Test Requirements**:
+  - `human-judgement` TR-15.1: L2降级时引导问题层隐藏
+  - `human-judgement` TR-15.2: L2降级时输入框不可输入，提示升级中
+  - `human-judgement` TR-15.3: L2降级时操作按钮全部可用但为直接跳转模式
+
+## [ ] Task 16: Demo 场景串联+Mock数据完善
+- **Priority**: high
+- **Depends On**: Task 11, Task 10, Task 6
+- **Description**:
+  - 完善 mock 数据覆盖核心演示场景：
+    - 场景1：餐饮配送全流程（配送中→骑手位置→联系骑手→加急→已送达→再来一单）
+    - 场景2：餐饮待支付→查退款规则→支付→挽留→支付成功
+    - 场景3：餐饮团购券退款挽留→坚持退款→退款卡片→退款中→催退款
+    - 场景4：餐饮取餐码→查看取餐码→设置使用提醒
+    - 场景5：酒店预约→预约表单→预约确认中→加急→预约成功→入住指引
+    - 场景6：景区待使用→一站式游玩攻略
+    - 场景7：旅行社→出行指引
+    - 场景8：极端天气→正向引导
+    - 场景9：气泡推送→点击气泡进入→上下文带入
+    - 场景10：L2降级演示
+  - 在开发模式下添加Demo场景切换器（悬浮小按钮可切换场景预设）
+  - 确保所有mock场景可独立触发气泡推送
+  - 添加气泡推送mock触发（Demo用：页面加载3秒后推送模拟气泡）
+  - 完善对话mock话术库（自然、贴合团小帮人设）
+- **Acceptance Criteria Addressed**: AC-12
+- **Test Requirements**:
+  - `human-judgement` TR-16.1: Demo场景1-10均可正常走通
+  - `human-judgement` TR-16.2: 页面加载后可见气泡推送
+  - `human-judgement` TR-16.3: 对话回复自然流畅，符合AI助手人设
+  - `programmatic` TR-16.4: 前端独立运行（后端未启动时）也可通过mock服务演示
+
+## [ ] Task 17: 整体集成+视觉打磨+构建验证
+- **Priority**: high
+- **Depends On**: All previous tasks
+- **Description**:
+  - 将AiAssistantProvider集成到App.tsx中
+  - 确保OrderCenter中左下角AI入口正确集成（区分待支付/非待支付）
+  - 确保右上角入口图标正确打开助手
+  - 全局样式调整：确保AI助手样式不影响现有订单中心样式（使用CSS命名空间隔离）
+  - CSS命名空间：所有AI助手样式以 `.ai-assistant-` 或 `.ai-` 前缀开头
+  - 视觉细节打磨：
+    - 消息气泡间距和对齐
+    - 卡片阴影和间距
+    - 动画流畅度
+    - 按钮点击反馈
+    - 输入框聚焦样式
+  - 构建验证：
+    - 前端 `npm run build` 通过
+    - 后端 `npm run build` 通过
+    - `npx tsc --noEmit` 零错误
+  - 开发服务器联调：前后端同时启动，验证API调用和WebSocket
+- **Acceptance Criteria Addressed**: AC-11, AC-13
+- **Test Requirements**:
+  - `programmatic` TR-17.1: 前端 vite build 成功，无错误
+  - `programmatic` TR-17.2: 后端 tsc 编译通过
+  - `human-judgement` TR-17.3: AI助手浮层打开/关闭不影响底层订单中心滚动和交互
+  - `human-judgement` TR-17.4: 整体视觉一致，符合PRD设计规范
+  - `programmatic` TR-17.5: 前后端联调核心API调用成功
