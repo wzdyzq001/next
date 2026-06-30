@@ -1,0 +1,821 @@
+.oc-order-card {
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* --- 基础层 --- */
+
+.oc-card-base {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.oc-card-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.oc-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.oc-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.oc-card-title-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.oc-card-name {
+  font-size: 14px;
+  font-weight: normal;
+  color: #1f2329;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.oc-card-status {
+  font-size: 12px;
+  flex-shrink: 0;
+  font-weight: 500;
+  color: #ff6b6b;
+}
+
+.oc-card-status.status-green {
+  color: #00B42A;
+}
+
+.oc-card-status.status-orange {
+  color: #FF7D00;
+}
+
+.oc-card-status.status-blue {
+  color: #165DFF;
+}
+
+.oc-card-status.status-gray {
+  color: #86909C;
+}
+
+.oc-card-status.status-red {
+  color: #F53F3F;
+}
+
+.oc-card-tags {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #86909c;
+  margin-bottom: 4px;
+}
+
+.oc-tag {
+  font-size: 12px;
+  color: #86909c;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.oc-tag-sep {
+  margin: 0 4px;
+  color: #c9cdd4;
+}
+
+.oc-card-store {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 12px;
+  color: #86909c;
+}
+
+.oc-store-distance {
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.oc-store-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #4e5969;
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-store-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.oc-store-icon-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  color: #86909c;
+}
+
+.oc-store-icon-btn:hover {
+  color: #1f2329;
+}
+
+.oc-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+}
+
+.oc-price-symbol {
+  font-size: 11px;
+  color: #1f2329;
+  font-weight: 400;
+}
+
+.oc-price-num {
+  font-size: 14px;
+  color: #1f2329;
+  font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* --- 扩展层 --- */
+
+.oc-card-extension {
+  margin: 0 14px;
+  padding: 8px 0;
+  border-top: none;
+}
+
+.oc-extension-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+  margin-bottom: 10px;
+}
+
+/* 进度条 */
+
+.oc-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.oc-progress-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4e5969;
+}
+
+.oc-progress-icon {
+  width: 16px;
+  height: 16px;
+  color: #1f2329;
+  flex-shrink: 0;
+}
+
+.oc-progress-estimate {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.oc-progress-estimate.blue {
+  background: #e8f3ff;
+  color: #165dff;
+}
+
+.oc-progress-estimate.orange {
+  background: #fff2e8;
+  color: #ff7d00;
+}
+
+.oc-progress-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.oc-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+}
+
+.oc-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5e6eb;
+  position: relative;
+  z-index: 2;
+}
+
+.oc-step.done .oc-step-dot {
+  background: #00B42A;
+}
+
+.oc-step.active .oc-step-dot {
+  background: #165DFF;
+  box-shadow: 0 0 0 4px rgba(22, 93, 255, 0.15);
+}
+
+.oc-step-label {
+  font-size: 11px;
+  color: #86909c;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.oc-step.done .oc-step-label {
+  color: #00B42A;
+}
+
+.oc-step.active .oc-step-label {
+  color: #165DFF;
+  font-weight: 500;
+}
+
+.oc-step-time {
+  font-size: 10px;
+  color: #86909c;
+  margin-top: 2px;
+}
+
+.oc-step.done .oc-step-time {
+  color: #00B42A;
+}
+
+.oc-step.active .oc-step-time {
+  color: #FF7D00;
+  font-weight: 500;
+}
+
+.oc-step-line {
+  position: absolute;
+  top: 5px;
+  left: calc(50% + 8px);
+  width: calc(100% - 16px);
+  height: 2px;
+  background: #e5e6eb;
+  z-index: 1;
+}
+
+.oc-step.done .oc-step-line {
+  background: #00B42A;
+}
+
+/* 信息列表 */
+
+.oc-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.oc-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.oc-info-label {
+  color: #86909c;
+}
+
+.oc-info-value {
+  color: #1f2329;
+  font-weight: 500;
+}
+
+/* 配送完成折叠 */
+.oc-delivery-completed {
+  cursor: pointer;
+  user-select: none;
+}
+
+.oc-delivery-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #00B42A;
+  padding: 4px 0;
+}
+
+.oc-delivery-summary-text {
+  flex: 1;
+  color: #86909c;
+  font-size: 13px;
+}
+
+.oc-delivery-arrow {
+  font-size: 12px;
+  color: #86909c;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.oc-delivery-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f2f3f5;
+}
+
+.oc-delivery-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.oc-delivery-info .oc-info-item {
+  font-size: 12px;
+  flex: 1;
+  min-width: 100px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.oc-delivery-info .oc-info-label {
+  font-size: 11px;
+}
+
+.oc-delivery-info .oc-info-value {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* 自提取餐码简化 */
+.oc-pickup-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.oc-pickup-code {
+  font-size: 20px;
+  font-weight: 600;
+  color: #FF7D00;
+  letter-spacing: 2px;
+}
+
+.oc-pickup-time {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.oc-pickup-no-code {
+  padding: 4px 0;
+}
+
+.oc-pickup-channel {
+  font-size: 12px;
+  color: #86909c;
+}
+
+/* 酒店扩展层 */
+.oc-hotel-extension {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.oc-hotel-stay-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-hotel-stay-label {
+  font-size: 12px;
+  color: #86909c;
+  flex-shrink: 0;
+}
+
+.oc-hotel-stay-name {
+  font-size: 13px;
+  color: #1f2329;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-hotel-stay-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.oc-hotel-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #f2f3f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  color: #4e5969;
+}
+
+.oc-hotel-icon-btn:hover {
+  background: #e5e6eb;
+}
+
+.oc-nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.oc-hotel-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.oc-hotel-date-label {
+  font-size: 12px;
+  color: #86909c;
+  flex-shrink: 0;
+}
+
+.oc-hotel-date-value {
+  color: #1f2329;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.oc-hotel-nights {
+  font-size: 12px;
+  color: #86909c;
+  padding: 2px 8px;
+  background: #f2f3f5;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.oc-hotel-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oc-hotel-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.oc-hotel-tag.warn {
+  background: #fff7e8;
+  color: #ff7d00;
+}
+
+.oc-hotel-tag.success {
+  background: #e8ffea;
+  color: #00b42a;
+}
+
+.oc-hotel-tag.default {
+  background: #f2f3f5;
+  color: #4e5969;
+}
+
+/* 退款状态条 */
+.oc-refund-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f7f8fa;
+  border-radius: 8px;
+}
+
+.oc-refund-status-text {
+  font-size: 13px;
+  color: #4e5969;
+  font-weight: 500;
+}
+
+.oc-refund-status-amount {
+  font-size: 14px;
+  color: #1f2329;
+  font-weight: 600;
+}
+
+/* --- 操作层 --- */
+
+.oc-card-actions {
+  padding: 8px 14px 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.oc-card-actions.with-countdown {
+  justify-content: flex-start;
+  align-items: center;
+  padding: 8px 14px 12px;
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+.oc-payment-countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.oc-countdown-label {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.oc-countdown-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #F53F3F;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.oc-action-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  margin-left: auto;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.oc-urge-reason {
+  font-size: 12px;
+  color: #F53F3F;
+  font-weight: 500;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.oc-action-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.oc-btn-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.oc-action-btn.primary {
+  background: linear-gradient(135deg, #FF8A8A 0%, #FFA898 100%);
+  color: #ffffff;
+}
+
+.oc-action-btn.primary:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.oc-action-btn.secondary {
+  background: #f2f3f5;
+  color: #4e5969;
+}
+
+.oc-action-btn.secondary:active {
+  background: #e5e6eb;
+}
+
+/* --- 引导问题层 --- */
+
+.oc-card-suggestions {
+  margin: 0 14px;
+  padding: 12px 0 14px;
+  border-top: 1px solid #f2f3f5;
+}
+
+.oc-suggestions-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  padding-left: 14px;
+  padding-right: 14px;
+  margin-left: -14px;
+  margin-right: -14px;
+  cursor: grab;
+  user-select: none;
+}
+
+.oc-suggestions-list::-webkit-scrollbar {
+  display: none;
+}
+
+.oc-suggestion-btn {
+  flex-shrink: 0;
+  padding: 6px 12px 6px 28px;
+  border-radius: 14px;
+  border: 1px solid #e5e6eb;
+  background: #f7f8fa;
+  font-size: 12px;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.oc-suggestion-btn::before {
+  content: '✦';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #165DFF;
+}
+
+.oc-suggestion-btn:active {
+  background: #e5e6eb;
+  border-color: #c9cdd4;
+}
+
+/* --- 精简卡片 --- */
+
+.oc-compact-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.oc-compact-card:active {
+  background: #f5f6f7;
+}
+
+.oc-compact-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.oc-compact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-compact-name {
+  font-size: 14px;
+  color: #1f2329;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-compact-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.oc-compact-price {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.oc-compact-price .oc-price-symbol {
+  font-size: 12px;
+  color: #1f2329;
+  font-weight: 400;
+}
+
+.oc-compact-price .oc-price-num {
+  font-size: 15px;
+  color: #1f2329;
+  font-weight: 400;
+}
+
+.oc-compact-status {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.oc-compact-status.status-red { color: #ff6b6b; }
+.oc-compact-status.status-blue { color: #165dff; }
+.oc-compact-status.status-green { color: #00b42a; }
+.oc-compact-status.status-orange { color: #ff7d00; }
+.oc-compact-status.status-gray { color: #86909c; }
+
+.oc-compact-action-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 15px;
+  background: #f2f3f5;
+  color: #1f2329;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.oc-compact-action-btn:active {
+  background: #e5e6eb;
+}

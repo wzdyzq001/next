@@ -7,6 +7,8 @@ import OrderSelectorOverlay from './OrderSelectorOverlay';
 import RedeemReminderSheet from './RedeemReminderSheet';
 import ReservationPanel from './ReservationPanel';
 import { AiOrderCardDemo } from './AiOrderCardDemo';
+import { FullOrderCard } from './OrderCard';
+import { FeatureCardRenderer } from './FeatureCard';
 import type { OrderListItem } from '../../types';
 
 const AiAssistantOverlay: React.FC = () => {
@@ -30,6 +32,8 @@ const AiAssistantOverlay: React.FC = () => {
     confirmReminder,
     closeReservationPanel,
     confirmReservation,
+    submitFeatureCard,
+    cancelFeatureCard,
   } = useAiAssistantContext();
   const [inputValue, setInputValue] = React.useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -546,6 +550,20 @@ const AiAssistantOverlay: React.FC = () => {
                   )}
                   <div className="ai-message-bubble">
                     {msg.content && <div className="ai-message-text">{msg.content}</div>}
+                    {msg.orderCard && (
+                      <div className="ai-message-order-card">
+                        <FullOrderCard order={msg.orderCard} />
+                      </div>
+                    )}
+                    {msg.featureCard && (
+                      <div className="ai-message-feature-card">
+                        <FeatureCardRenderer
+                          data={msg.featureCard}
+                          onConfirm={(data) => submitFeatureCard(msg.featureCard!.type, data || {})}
+                          onCancel={() => cancelFeatureCard()}
+                        />
+                      </div>
+                    )}
                     {msg.actions && msg.actions.length > 0 && (
                       <div className="ai-message-actions">
                         {msg.actions.map((action, idx) => (

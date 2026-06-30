@@ -1,4 +1,6 @@
 import type { MessageAction, RedeemReminder } from '../../types';
+import type { OrderCardData } from './OrderCard/orderCardTypes';
+import type { FeatureCardData } from './FeatureCard/types';
 
 export type OrderCategory = 'food' | 'hotel' | 'scenic' | 'general' | 'travel';
 
@@ -119,6 +121,8 @@ export interface ChatMessage {
   actions?: MessageAction[];
   redeemReminder?: RedeemReminder;
   reservationInfo?: any;
+  orderCard?: OrderCardData;
+  featureCard?: FeatureCardData;
   timestamp: number;
   status?: 'sending' | 'sent' | 'error';
 }
