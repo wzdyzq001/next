@@ -39,3 +39,11 @@ export const WS_URL = 'ws://localhost:3001/ws';
 export const API_TIMEOUT = 5000;
 
 export const HEALTH_CHECK_INTERVAL = 60000;
+
+export const STORAGE_KEY_CHAT_HISTORY = 'ai_assistant_chat_history';
+
+export const CHAT_HISTORY_MAX_AGE = 24 * 60 * 60 * 1000;
+
+export const COLLAPSE_STATE_STORAGE_KEY = 'ai_assistant_collapse_state';
+
+export const COLLAPSE_VISIBLE_COUNT = 2;

@@ -1,6 +1,7 @@
-import type { MessageAction, RedeemReminder } from '../../types';
+import type { MessageAction, RedeemReminder, OrderListItem } from '../../types';
 import type { OrderCardData } from './OrderCard/orderCardTypes';
 import type { FeatureCardData } from './FeatureCard/types';
+import type { ReservationInfoCardData } from './ReservationInfoCard';
 
 export type OrderCategory = 'food' | 'hotel' | 'scenic' | 'general' | 'travel';
 
@@ -82,6 +83,11 @@ export interface OrderData {
 
 export type EntrySource = 'order_list' | 'order_detail' | 'bubble';
 
+export interface CollapseState {
+  order_list?: boolean;
+  [orderId: string]: boolean | undefined;
+}
+
 export type BubbleType = 'persistent_short' | 'temporary_short' | 'long_collapsible';
 
 export interface BubbleConfig {
@@ -120,7 +126,7 @@ export interface ChatMessage {
   quickReplies?: GuidedQuestion[];
   actions?: MessageAction[];
   redeemReminder?: RedeemReminder;
-  reservationInfo?: any;
+  reservationInfo?: ReservationInfoCardData;
   orderCard?: OrderCardData;
   featureCard?: FeatureCardData;
   timestamp: number;
@@ -154,6 +160,8 @@ export interface AiAssistantState {
   currentBubble?: BubbleConfig;
   isLoading: boolean;
   hasUnread: boolean;
+  isHistoryCollapsed: boolean;
+  collapsedCount: number;
   bubbleEventContext?: {
     eventType: string;
     orderId: string;
@@ -165,12 +173,17 @@ export interface AiAssistantState {
   reservationPanelOpen: boolean;
   reservationStoreName: string;
   reservationBusinessHours?: string;
+  voucherSheetOpen: boolean;
+  voucherSheetStoreName?: string;
+  voucherSheetProductName?: string;
+  voucherSheetVoucherCode?: string;
 }
 
 export interface AiAssistantContextValue extends AiAssistantState {
   openAssistant: (orderId?: string, source?: EntrySource) => void;
   closeAssistant: () => void;
   toggleFullscreen: () => void;
+  toggleHistoryCollapsed: () => void;
   sendMessage: (message: string) => Promise<void>;
   triggerBubble: (bubble: BubbleConfig) => void;
   clickBubble: () => void;
@@ -192,9 +205,25 @@ export interface AiAssistantContextValue extends AiAssistantState {
   openReminderSheet: (orderId: string, productName?: string, validDate?: string) => void;
   closeReminderSheet: () => void;
   confirmReminder: (reminder: RedeemReminder) => void;
-  openReservationPanel: (storeName: string, businessHours?: string) => void;
+  cancelReminder: (orderId: string) => void;
+  modifyReminder: (orderId: string, productName?: string, validDate?: string) => void;
+  resetReminder: (orderId: string, productName?: string, validDate?: string) => void;
+  openReservationPanel: (storeName: string, businessHours?: string, mode?: 'new' | 'rebook', initialData?: ReservationInfoCardData, messageId?: string) => void;
   closeReservationPanel: () => void;
-  confirmReservation: (data: any) => void;
+  confirmReservation: (data: ReservationInfoCardData, messageId?: string) => void;
+  cancelReservation: (messageId: string, reservation: ReservationInfoCardData) => void;
+  rebookReservation: (messageId: string, reservation: ReservationInfoCardData) => void;
+  reservationEditMode: 'new' | 'rebook';
+  editingReservation: ReservationInfoCardData | null;
+  reservationsByOrder: Record<string, ReservationInfoCardData>;
+  cancelOrderReservation: (orderId: string) => void;
+  rebookOrderReservation: (orderId: string) => void;
+  openVoucherSheet: (storeName: string, productName: string, voucherCode: string) => void;
+  closeVoucherSheet: () => void;
+  onOpenReservation?: (orderId: string, category: string, productType?: string) => void;
+  sendOrderCard: (order: OrderListItem | OrderData) => void;
+  checkExistingReservation: (orderId?: string) => ReservationInfoCardData | null;
+  showExistingReservationAlert: (reservation: ReservationInfoCardData) => void;
 }
 
 export interface ApiResponse<T = unknown> {

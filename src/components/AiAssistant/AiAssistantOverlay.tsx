@@ -6,10 +6,15 @@ import AIAssistantIcon from './AIAssistantIcon';
 import OrderSelectorOverlay from './OrderSelectorOverlay';
 import RedeemReminderSheet from './RedeemReminderSheet';
 import ReservationPanel from './ReservationPanel';
+import VoucherCodeSheet from './VoucherCodeSheet';
 import { AiOrderCardDemo } from './AiOrderCardDemo';
 import { FullOrderCard } from './OrderCard';
 import { FeatureCardRenderer } from './FeatureCard';
+import ReservationInfoCard from './ReservationInfoCard';
+import RedeemReminderCard from './RedeemReminderCard';
+import ConfirmDialog from './ConfirmDialog';
 import type { OrderListItem } from '../../types';
+import type { ReservationInfoCardData } from './ReservationInfoCard';
 
 const AiAssistantOverlay: React.FC = () => {
   const {
@@ -32,16 +37,41 @@ const AiAssistantOverlay: React.FC = () => {
     confirmReminder,
     closeReservationPanel,
     confirmReservation,
+    voucherSheetOpen,
+    voucherSheetStoreName,
+    voucherSheetProductName,
+    voucherSheetVoucherCode,
+    openReminderSheet,
+    openReservationPanel,
+    openVoucherSheet,
+    closeVoucherSheet,
     submitFeatureCard,
     cancelFeatureCard,
+    cancelReservation,
+    rebookReservation,
+    cancelReminder,
+    modifyReminder,
+    resetReminder,
+    reservationEditMode,
+    editingReservation,
+    onOpenReservation,
+    sendOrderCard,
+    checkExistingReservation,
+    showExistingReservationAlert,
+    isHistoryCollapsed,
+    collapsedCount,
+    toggleHistoryCollapsed,
+    entrySource,
   } = useAiAssistantContext();
   const [inputValue, setInputValue] = React.useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number>(0);
   const startHeightRef = useRef<number>(0);
   const currentYRef = useRef<number>(0);
   const isDraggingRef = useRef(false);
+  const dragModeRef = useRef<'none' | 'container' | 'content'>('none');
   const lastMoveTimeRef = useRef<number>(0);
   const lastMoveYRef = useRef<number>(0);
   const velocityRef = useRef<number>(0);
@@ -55,7 +85,9 @@ const AiAssistantOverlay: React.FC = () => {
   const [voiceMode, setVoiceMode] = useState(false);
   const [volumeLevel, setVolumeLevel] = useState(0);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<{ messageId: string; reservation: ReservationInfoCardData } | null>(null);
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<any>(null);
   const analyserRef = useRef<any>(null);
@@ -89,6 +121,14 @@ const AiAssistantOverlay: React.FC = () => {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const anySheetOpen = reminderSheetOpen || reservationPanelOpen || voucherSheetOpen;
+    if (anySheetOpen && !isFullscreen) {
+      toggleFullscreen();
+    }
+  }, [reminderSheetOpen, reservationPanelOpen, voucherSheetOpen, isOpen, isFullscreen, toggleFullscreen]);
+
   const handleOpenOrderSelector = useCallback(() => {
     if (!isFullscreen) {
       toggleFullscreen();
@@ -102,108 +142,130 @@ const AiAssistantOverlay: React.FC = () => {
     setOrderSelectorOpen(false);
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
+  const getCurrentHeight = useCallback(() => {
     const viewportHeight = window.innerHeight;
-    const minimizedHeight = viewportHeight * 0.9;
-    const fullscreenHeight = viewportHeight;
+    if (isDraggingRef.current) return dragHeightRef.current;
+    return isFullscreen ? viewportHeight : viewportHeight * 0.9;
+  }, [isFullscreen]);
 
-    startYRef.current = e.clientY;
-    startHeightRef.current = isFullscreen ? fullscreenHeight : minimizedHeight;
-    currentYRef.current = startYRef.current;
-    lastMoveYRef.current = startYRef.current;
+  const handleDragEnd = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    const wasContainerDrag = dragModeRef.current === 'container';
+    isDraggingRef.current = false;
+    dragModeRef.current = 'none';
+    setIsDragging(false);
+
+    if (!wasContainerDrag) return;
+
+    const viewportHeight = window.innerHeight;
+    const currentHeight = dragHeightRef.current;
+    const velocity = velocityRef.current;
+    const closeThreshold = viewportHeight * 0.6;
+    const fullscreenThreshold = viewportHeight * 0.95;
+    const minimizedHeight = viewportHeight * 0.9;
+
+    if (velocity < -0.8 || currentHeight < closeThreshold) {
+      closeAssistant();
+      return;
+    }
+
+    let shouldGoFullscreen = false;
+    if (Math.abs(velocity) > 0.5) {
+      shouldGoFullscreen = velocity > 0;
+    } else {
+      shouldGoFullscreen = currentHeight > fullscreenThreshold;
+    }
+
+    if (shouldGoFullscreen !== isFullscreen) {
+      toggleFullscreen();
+    }
+  }, [closeAssistant, isFullscreen, toggleFullscreen]);
+
+  const startContainerDrag = useCallback((clientY: number) => {
+    const viewportHeight = window.innerHeight;
+    const currentHeight = getCurrentHeight();
+
+    startYRef.current = clientY;
+    startHeightRef.current = currentHeight;
+    currentYRef.current = clientY;
+    lastMoveYRef.current = clientY;
     lastMoveTimeRef.current = Date.now();
     velocityRef.current = 0;
     isDraggingRef.current = true;
+    dragModeRef.current = 'container';
     setIsDragging(true);
-    setDragHeight(startHeightRef.current);
+    setDragHeight(currentHeight);
+  }, [getCurrentHeight]);
+
+  const updateContainerDrag = useCallback((clientY: number) => {
+    const deltaY = startYRef.current - clientY;
+    currentYRef.current = clientY;
+
+    const now = Date.now();
+    const dt = now - lastMoveTimeRef.current;
+    if (dt > 0) {
+      velocityRef.current = (lastMoveYRef.current - clientY) / dt;
+    }
+    lastMoveYRef.current = clientY;
+    lastMoveTimeRef.current = now;
+
+    const viewportHeight = window.innerHeight;
+    const fullscreenHeight = viewportHeight;
+    const minHeight = viewportHeight * 0.3;
+
+    let newHeight = startHeightRef.current + deltaY;
+
+    if (newHeight > fullscreenHeight) {
+      newHeight = fullscreenHeight + (newHeight - fullscreenHeight) * 0.3;
+    }
+    if (newHeight < minHeight) {
+      newHeight = minHeight + (newHeight - minHeight) * 0.5;
+    }
+
+    setDragHeight(newHeight);
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    startContainerDrag(e.clientY);
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-
-      const mouseY = e.clientY;
-      const deltaY = startYRef.current - mouseY;
-      currentYRef.current = mouseY;
-
-      const now = Date.now();
-      const dt = now - lastMoveTimeRef.current;
-      if (dt > 0) {
-        velocityRef.current = (lastMoveYRef.current - mouseY) / dt;
-      }
-      lastMoveYRef.current = mouseY;
-      lastMoveTimeRef.current = now;
-
-      const viewportHeight = window.innerHeight;
-      const minimizedHeight = viewportHeight * 0.9;
-      const fullscreenHeight = viewportHeight;
-
-      let newHeight = startHeightRef.current + deltaY;
-
-      if (newHeight > fullscreenHeight) {
-        newHeight = fullscreenHeight + (newHeight - fullscreenHeight) * 0.3;
-      }
-      if (newHeight < minimizedHeight * 0.9) {
-        newHeight = minimizedHeight * 0.9 + (newHeight - minimizedHeight * 0.9) * 0.3;
-      }
-
-      setDragHeight(newHeight);
+      if (!isDraggingRef.current || dragModeRef.current !== 'container') return;
+      updateContainerDrag(e.clientY);
     };
 
     const handleMouseUp = () => {
-      if (!isDraggingRef.current) return;
-      isDraggingRef.current = false;
-      setIsDragging(false);
-
-      const viewportHeight = window.innerHeight;
-      const minimizedHeight = viewportHeight * 0.9;
-      const fullscreenHeight = viewportHeight;
-      const midpoint = (minimizedHeight + fullscreenHeight) / 2;
-
-      const currentHeight = dragHeightRef.current;
-      const velocity = velocityRef.current;
-
-      let shouldGoFullscreen = false;
-
-      if (Math.abs(velocity) > 0.5) {
-        shouldGoFullscreen = velocity > 0;
-      } else {
-        shouldGoFullscreen = currentHeight > midpoint;
-      }
-
-      if (shouldGoFullscreen !== isFullscreen) {
-        toggleFullscreen();
-      }
-
+      handleDragEnd();
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [isFullscreen, toggleFullscreen]);
+  }, [startContainerDrag, updateContainerDrag, handleDragEnd]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const viewportHeight = window.innerHeight;
-    const minimizedHeight = viewportHeight * 0.9;
-    const fullscreenHeight = viewportHeight;
+  const handleMessageListTouchStart = useCallback((e: React.TouchEvent) => {
+    const touchY = e.touches[0].clientY;
+    const listEl = messageListRef.current;
+    if (!listEl) return;
 
-    startYRef.current = e.touches[0].clientY;
-    startHeightRef.current = isFullscreen ? fullscreenHeight : minimizedHeight;
-    currentYRef.current = startYRef.current;
-    lastMoveYRef.current = startYRef.current;
+    startYRef.current = touchY;
+    currentYRef.current = touchY;
+    lastMoveYRef.current = touchY;
     lastMoveTimeRef.current = Date.now();
     velocityRef.current = 0;
     isDraggingRef.current = true;
-    setIsDragging(true);
-    setDragHeight(startHeightRef.current);
-  }, [isFullscreen]);
+    dragModeRef.current = 'none';
+    startHeightRef.current = getCurrentHeight();
+  }, [getCurrentHeight]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleMessageListTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isDraggingRef.current) return;
 
     const touchY = e.touches[0].clientY;
     const deltaY = startYRef.current - touchY;
-    currentYRef.current = touchY;
+    const listEl = messageListRef.current;
+    if (!listEl) return;
 
     const now = Date.now();
     const dt = now - lastMoveTimeRef.current;
@@ -213,47 +275,45 @@ const AiAssistantOverlay: React.FC = () => {
     lastMoveYRef.current = touchY;
     lastMoveTimeRef.current = now;
 
-    const viewportHeight = window.innerHeight;
-    const minimizedHeight = viewportHeight * 0.9;
-    const fullscreenHeight = viewportHeight;
+    const isAtTop = listEl.scrollTop <= 0;
+    const isAtBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 1;
 
-    let newHeight = startHeightRef.current + deltaY;
-
-    if (newHeight > fullscreenHeight) {
-      newHeight = fullscreenHeight + (newHeight - fullscreenHeight) * 0.3;
+    if (dragModeRef.current === 'none') {
+      if (deltaY > 5 && isAtTop) {
+        dragModeRef.current = 'container';
+        setIsDragging(true);
+        setDragHeight(getCurrentHeight());
+      } else if (deltaY < -5 && isAtBottom) {
+        dragModeRef.current = 'container';
+        setIsDragging(true);
+        setDragHeight(getCurrentHeight());
+      } else {
+        dragModeRef.current = 'content';
+      }
     }
-    if (newHeight < minimizedHeight * 0.9) {
-      newHeight = minimizedHeight * 0.9 + (newHeight - minimizedHeight * 0.9) * 0.3;
-    }
 
-    setDragHeight(newHeight);
-  }, []);
+    if (dragModeRef.current === 'container') {
+      e.preventDefault();
+      updateContainerDrag(touchY);
+    }
+  }, [getCurrentHeight, updateContainerDrag]);
+
+  const handleMessageListTouchEnd = useCallback(() => {
+    handleDragEnd();
+  }, [handleDragEnd]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    startContainerDrag(e.touches[0].clientY);
+  }, [startContainerDrag]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDraggingRef.current || dragModeRef.current !== 'container') return;
+    updateContainerDrag(e.touches[0].clientY);
+  }, [updateContainerDrag]);
 
   const handleTouchEnd = useCallback(() => {
-    if (!isDraggingRef.current) return;
-    isDraggingRef.current = false;
-    setIsDragging(false);
-
-    const viewportHeight = window.innerHeight;
-    const minimizedHeight = viewportHeight * 0.9;
-    const fullscreenHeight = viewportHeight;
-    const midpoint = (minimizedHeight + fullscreenHeight) / 2;
-
-    const currentHeight = dragHeightRef.current;
-    const velocity = velocityRef.current;
-
-    let shouldGoFullscreen = false;
-
-    if (Math.abs(velocity) > 0.5) {
-      shouldGoFullscreen = velocity > 0;
-    } else {
-      shouldGoFullscreen = currentHeight > midpoint;
-    }
-
-    if (shouldGoFullscreen !== isFullscreen) {
-      toggleFullscreen();
-    }
-  }, [isFullscreen, toggleFullscreen]);
+    handleDragEnd();
+  }, [handleDragEnd]);
 
   const handleSend = useCallback(() => {
     if (!inputValue.trim() && !selectedOrder) return;
@@ -273,8 +333,9 @@ const AiAssistantOverlay: React.FC = () => {
   }, [handleSend]);
 
   const handleSelectOrder = useCallback((order: OrderListItem) => {
-    setSelectedOrder(order);
-  }, []);
+    sendOrderCard(order);
+    setSelectedOrder(null);
+  }, [sendOrderCard]);
 
   const handleRemoveOrder = useCallback(() => {
     setSelectedOrder(null);
@@ -488,14 +549,22 @@ const AiAssistantOverlay: React.FC = () => {
           height: `${dragHeight}px`,
         } : undefined}
         onClick={(e) => e.stopPropagation()}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        <div className="ai-overlay-grabber" />
+        <div
+          className="ai-overlay-grabber"
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        />
 
-        <div className="ai-overlay-header">
+        <div
+          className="ai-overlay-header"
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className="ai-overlay-avatar">
             <div className="ai-avatar-pulse-ring" />
             <div className="ai-avatar-rotate-ring" />
@@ -533,12 +602,26 @@ const AiAssistantOverlay: React.FC = () => {
           </div>
         </div>
 
-        <div className="ai-overlay-body">
+        <div
+          className="ai-overlay-body"
+          ref={messageListRef}
+          onTouchStart={handleMessageListTouchStart}
+          onTouchMove={handleMessageListTouchMove}
+          onTouchEnd={handleMessageListTouchEnd}
+        >
           {demoMode ? (
             <AiOrderCardDemo />
           ) : (
             <div className="ai-message-list">
-              {messages.map((msg) => (
+              {isHistoryCollapsed && collapsedCount > 0 && (
+                <div
+                  className="ai-history-collapse"
+                  onClick={toggleHistoryCollapsed}
+                >
+                  还有 {collapsedCount} 条历史消息
+                </div>
+              )}
+              {(isHistoryCollapsed && collapsedCount > 0 ? messages.slice(collapsedCount) : messages).map((msg) => (
                 <div
                   key={msg.id}
                   className={`ai-message ${msg.role}`}
@@ -549,13 +632,41 @@ const AiAssistantOverlay: React.FC = () => {
                     </div>
                   )}
                   <div className="ai-message-bubble">
-                    {msg.content && <div className="ai-message-text">{msg.content}</div>}
+                    {msg.content && !msg.reservationInfo && <div className="ai-message-text">{msg.content}</div>}
                     {msg.orderCard && (
                       <div className="ai-message-order-card">
                         <FullOrderCard
                           order={msg.orderCard}
                           onActionClick={(label) => {
-                            executeAction({ label, kind: 'custom' as any });
+                            const orderCard = msg.orderCard!;
+                            if (label.includes('使用提醒') || label.includes('⏰')) {
+                              const validDate = orderCard.validDate;
+                              openReminderSheet(orderCard.id, orderCard.productName, validDate);
+                            } else if (label.includes('帮我约') || label.includes('预约')) {
+                              const existing = checkExistingReservation(orderCard.id);
+                              if (existing) {
+                                showExistingReservationAlert(existing);
+                                return;
+                              }
+                              const category = orderCard.category;
+                              const isPresaleVoucher = ['hotel', 'scenic', 'travel_agency', 'vacation', 'play', 'show'].includes(category) &&
+                                (orderCard.productType === 'presale_voucher' || orderCard.productType === 'calendar_ticket' || orderCard.productType === 'calendar_room');
+                              if (onOpenReservation && isPresaleVoucher) {
+                                onOpenReservation(orderCard.id, category, orderCard.productType);
+                              } else {
+                                executeAction({
+                                  label: '帮我约',
+                                  kind: 'open_reservation',
+                                  orderId: orderCard.id,
+                                  storeName: orderCard.storeName,
+                                } as any);
+                              }
+                            } else if (label.includes('查看券码') || label.includes('🎫')) {
+                              const code = orderCard.voucherInfo?.code || '882945612345';
+                              openVoucherSheet(orderCard.storeName, orderCard.productName, code);
+                            } else {
+                              executeAction({ label, kind: 'custom' as any });
+                            }
                           }}
                           onSuggestionClick={(suggestion) => {
                             sendMessage(suggestion);
@@ -569,6 +680,39 @@ const AiAssistantOverlay: React.FC = () => {
                           data={msg.featureCard}
                           onConfirm={(data) => submitFeatureCard(msg.featureCard!.type, data || {})}
                           onCancel={() => cancelFeatureCard()}
+                        />
+                      </div>
+                    )}
+                    {msg.reservationInfo && (
+                      <div className="ai-message-reservation-card">
+                        <ReservationInfoCard
+                          data={msg.reservationInfo}
+                          now={Date.now()}
+                          onCancel={
+                            msg.reservationInfo.acceptStatus === 'pending' || msg.reservationInfo.acceptStatus === 'accepted'
+                              ? () => {
+                                  setCancelTarget({ messageId: msg.id, reservation: msg.reservationInfo! });
+                                  setCancelConfirmOpen(true);
+                                }
+                              : undefined
+                          }
+                          onRebook={
+                            msg.reservationInfo.acceptStatus === 'failed' || msg.reservationInfo.acceptStatus === 'canceled'
+                              ? () => rebookReservation(msg.id, msg.reservationInfo!)
+                              : undefined
+                          }
+                        />
+                      </div>
+                    )}
+                    {msg.redeemReminder && msg.orderCard && (
+                      <div className="ai-message-reminder-card">
+                        <RedeemReminderCard
+                          reminder={msg.redeemReminder}
+                          orderId={msg.orderCard.id}
+                          productName={msg.orderCard.productName}
+                          onCancel={() => cancelReminder(msg.orderCard!.id)}
+                          onModify={() => modifyReminder(msg.orderCard!.id, msg.orderCard!.productName, msg.orderCard!.validDate)}
+                          onReset={() => resetReminder(msg.orderCard!.id, msg.orderCard!.productName, msg.orderCard!.validDate)}
                         />
                       </div>
                     )}
@@ -716,26 +860,58 @@ const AiAssistantOverlay: React.FC = () => {
   return (
     <>
       {ReactDOM.createPortal(overlay, document.body)}
-      <OrderSelectorOverlay
-        isOpen={orderSelectorOpen}
-        onClose={handleCloseOrderSelector}
-        onSelectOrder={handleSelectOrder}
-      />
-      <RedeemReminderSheet
-        orderId={reminderSheetOrderId}
-        productName={reminderSheetProductName}
-        validDate={reminderSheetValidDate}
-        open={reminderSheetOpen}
-        onClose={closeReminderSheet}
-        onConfirm={confirmReminder}
-      />
-      <ReservationPanel
-        open={reservationPanelOpen}
-        onClose={closeReservationPanel}
-        onConfirm={confirmReservation}
-        storeName={reservationStoreName}
-        businessHours={reservationBusinessHours}
-      />
+      {ReactDOM.createPortal(
+        <>
+          <OrderSelectorOverlay
+            isOpen={orderSelectorOpen}
+            onClose={handleCloseOrderSelector}
+            onSelectOrder={handleSelectOrder}
+          />
+          <RedeemReminderSheet
+            orderId={reminderSheetOrderId}
+            productName={reminderSheetProductName}
+            validDate={reminderSheetValidDate}
+            open={reminderSheetOpen}
+            onClose={closeReminderSheet}
+            onConfirm={confirmReminder}
+          />
+          <ReservationPanel
+            open={reservationPanelOpen}
+            onClose={closeReservationPanel}
+            onConfirm={confirmReservation}
+            storeName={reservationStoreName}
+            businessHours={reservationBusinessHours}
+            initialReservation={editingReservation}
+          />
+          <VoucherCodeSheet
+            open={voucherSheetOpen}
+            onClose={closeVoucherSheet}
+            storeName={voucherSheetStoreName}
+            productName={voucherSheetProductName}
+            voucherCode={voucherSheetVoucherCode}
+          />
+          <ConfirmDialog
+            open={cancelConfirmOpen}
+            title="取消预约"
+            message="取消预约后可能约不到热门时间，确定取消预约吗？"
+            confirmText="确认取消"
+            cancelText="再想想"
+            confirmButtonType="danger"
+            onConfirm={() => {
+              if (cancelTarget) {
+                cancelReservation(cancelTarget.messageId, cancelTarget.reservation);
+              }
+              setCancelConfirmOpen(false);
+              setCancelTarget(null);
+            }}
+            onCancel={() => {
+              setCancelConfirmOpen(false);
+              setCancelTarget(null);
+            }}
+          />
+        </>,
+        document.body
+      )}
     </>
   );
 };
