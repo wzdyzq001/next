@@ -46,4 +46,10 @@ export const CHAT_HISTORY_MAX_AGE = 24 * 60 * 60 * 1000;
 
 export const COLLAPSE_STATE_STORAGE_KEY = 'ai_assistant_collapse_state';
 
-export const COLLAPSE_VISIBLE_COUNT = 2;
+export const LAST_ENTRY_STORAGE_KEY = 'ai_assistant_last_entry';
+
+export const COLLAPSE_VISIBLE_COUNT_ORDER_LIST_FROM_DETAIL = 1;
+
+export const COLLAPSE_VISIBLE_COUNT_ORDER_LIST_DEFAULT = 2;
+
+export const COLLAPSE_VISIBLE_COUNT_NEW_ORDER = 1;

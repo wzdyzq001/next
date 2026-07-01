@@ -12,6 +12,8 @@ import type {
   MessageAction,
   OrderData,
   CollapseState,
+  CollapseStateItem,
+  LastEntryState,
 } from './types';
 import type { RedeemReminder } from '../../types';
 import type { FeatureCardData } from './FeatureCard/types';
@@ -23,7 +25,10 @@ import {
   STORAGE_KEY_CHAT_HISTORY,
   CHAT_HISTORY_MAX_AGE,
   COLLAPSE_STATE_STORAGE_KEY,
-  COLLAPSE_VISIBLE_COUNT,
+  LAST_ENTRY_STORAGE_KEY,
+  COLLAPSE_VISIBLE_COUNT_ORDER_LIST_FROM_DETAIL,
+  COLLAPSE_VISIBLE_COUNT_ORDER_LIST_DEFAULT,
+  COLLAPSE_VISIBLE_COUNT_NEW_ORDER,
 } from './constants';
 import { chat, getOrder } from './api';
 import { convertOrderDataToCardData, convertOrderListItemToCardData } from './orderDataAdapter';
@@ -83,7 +88,17 @@ const loadCollapseState = (): CollapseState => {
   try {
     const raw = localStorage.getItem(COLLAPSE_STATE_STORAGE_KEY);
     if (!raw) return {};
-    return JSON.parse(raw) as CollapseState;
+    const parsed = JSON.parse(raw) as Record<string, any>;
+    const result: CollapseState = {};
+    for (const key of Object.keys(parsed)) {
+      const val = parsed[key];
+      if (typeof val === 'boolean') {
+        result[key] = { collapsed: val, visibleCount: 2 };
+      } else if (val && typeof val === 'object' && 'collapsed' in val) {
+        result[key] = val as CollapseStateItem;
+      }
+    }
+    return result;
   } catch {
     return {};
   }
@@ -92,6 +107,24 @@ const loadCollapseState = (): CollapseState => {
 const saveCollapseState = (state: CollapseState): void => {
   try {
     localStorage.setItem(COLLAPSE_STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
+};
+
+const loadLastEntry = (): LastEntryState | null => {
+  try {
+    const raw = localStorage.getItem(LAST_ENTRY_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as LastEntryState;
+  } catch {
+    return null;
+  }
+};
+
+const saveLastEntry = (state: LastEntryState): void => {
+  try {
+    localStorage.setItem(LAST_ENTRY_STORAGE_KEY, JSON.stringify(state));
   } catch {
     // ignore
   }
@@ -162,6 +195,7 @@ export const AiAssistantProvider: React.FC<{
   const [reservationsByOrder, setReservationsByOrder] = useState<Record<string, ReservationInfoCardData>>(initialReservations);
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
   const [collapsedCount, setCollapsedCount] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(2);
 
   const contextRef = useRef<ConversationContext>(createEmptyContext());
   const sessionIdRef = useRef<string>('');
@@ -290,6 +324,7 @@ export const AiAssistantProvider: React.FC<{
       setTransferHuman('idle');
       setHasUnread(false);
 
+      const lastEntry = loadLastEntry();
       const savedHistory = loadChatHistory();
 
       let currentOrder: OrderData | null = null;
@@ -397,47 +432,70 @@ export const AiAssistantProvider: React.FC<{
       const collapseState = loadCollapseState();
       let initialCollapsed = false;
       let initialCollapsedCount = 0;
+      let initialVisibleCount = 2;
 
       if (source === 'order_list' || !orderId) {
-        const key = 'order_list';
-        if (collapseState[key] !== undefined) {
-          initialCollapsed = collapseState[key]!;
-        } else {
-          initialCollapsed = initialMessages.length > COLLAPSE_VISIBLE_COUNT;
-        }
-        initialCollapsedCount = Math.max(0, initialMessages.length - COLLAPSE_VISIBLE_COUNT);
+        const lastSource = lastEntry?.source;
+        initialVisibleCount = lastSource === 'order_detail'
+          ? COLLAPSE_VISIBLE_COUNT_ORDER_LIST_FROM_DETAIL
+          : COLLAPSE_VISIBLE_COUNT_ORDER_LIST_DEFAULT;
+        initialCollapsed = initialMessages.length > initialVisibleCount;
+        initialCollapsedCount = Math.max(0, initialMessages.length - initialVisibleCount);
       } else {
-        if (isNewOrderCard) {
-          initialCollapsed = true;
-          initialCollapsedCount = newOrderCardMessageIndex >= 0 ? newOrderCardMessageIndex : 0;
-        } else {
-          if (collapseState[orderId] !== undefined) {
-            initialCollapsed = collapseState[orderId]!;
+        const isSameOrder = lastEntry?.source === 'order_detail' && lastEntry.orderId === orderId;
+        if (isSameOrder) {
+          const saved = collapseState[orderId];
+          if (saved) {
+            initialCollapsed = saved.collapsed;
+            initialVisibleCount = saved.visibleCount;
+            if (initialCollapsed) {
+              const orderCardIndex = initialMessages.findIndex(
+                (msg) => msg.orderCard && (msg.orderCard.id || (msg.orderCard as any).orderId) === orderId
+              );
+              initialCollapsedCount = orderCardIndex >= 0 ? orderCardIndex : Math.max(0, initialMessages.length - initialVisibleCount);
+            } else {
+              initialCollapsedCount = 0;
+            }
           } else {
-            initialCollapsed = false;
-          }
-          if (initialCollapsed) {
+            initialCollapsed = true;
+            initialVisibleCount = COLLAPSE_VISIBLE_COUNT_NEW_ORDER;
             const orderCardIndex = initialMessages.findIndex(
               (msg) => msg.orderCard && (msg.orderCard.id || (msg.orderCard as any).orderId) === orderId
             );
-            initialCollapsedCount = orderCardIndex >= 0 ? orderCardIndex : 0;
+            initialCollapsedCount = orderCardIndex >= 0 ? orderCardIndex : Math.max(0, initialMessages.length - initialVisibleCount);
+          }
+        } else {
+          initialCollapsed = true;
+          initialVisibleCount = COLLAPSE_VISIBLE_COUNT_NEW_ORDER;
+          if (isNewOrderCard) {
+            initialCollapsedCount = newOrderCardMessageIndex >= 0 ? newOrderCardMessageIndex : 0;
+          } else {
+            const orderCardIndex = initialMessages.findIndex(
+              (msg) => msg.orderCard && (msg.orderCard.id || (msg.orderCard as any).orderId) === orderId
+            );
+            initialCollapsedCount = orderCardIndex >= 0 ? orderCardIndex : Math.max(0, initialMessages.length - initialVisibleCount);
           }
         }
       }
 
       setIsHistoryCollapsed(initialCollapsed);
       setCollapsedCount(initialCollapsedCount);
+      setVisibleCount(initialVisibleCount);
       setMessages(initialMessages);
       contextRef.current.lastActiveAt = Date.now();
 
-      const persistenceKey = source === 'order_list' || !orderId ? 'order_list' : orderId;
-      if (isNewOrderCard) {
-        collapseState[persistenceKey] = initialCollapsed;
-        saveCollapseState(collapseState);
-      } else if (collapseState[persistenceKey] === undefined) {
-        collapseState[persistenceKey] = initialCollapsed;
+      if (source === 'order_detail' && orderId) {
+        collapseState[orderId] = {
+          collapsed: initialCollapsed,
+          visibleCount: initialVisibleCount,
+        };
         saveCollapseState(collapseState);
       }
+
+      saveLastEntry({
+        source,
+        orderId,
+      });
     },
     []
   );
@@ -456,11 +514,43 @@ export const AiAssistantProvider: React.FC<{
       const newState = !prev;
       const collapseState = loadCollapseState();
       const key = entrySource === 'order_list' ? 'order_list' : (currentOrderId || 'order_list');
-      collapseState[key] = newState;
+
+      if (newState) {
+        const currentVisibleCount = entrySource === 'order_list'
+          ? (collapseState[key]?.visibleCount || 2)
+          : (collapseState[key]?.visibleCount || 1);
+        collapseState[key] = {
+          collapsed: true,
+          visibleCount: currentVisibleCount,
+        };
+      } else {
+        collapseState[key] = {
+          collapsed: false,
+          visibleCount: collapseState[key]?.visibleCount || (entrySource === 'order_list' ? 2 : 1),
+        };
+      }
+
       saveCollapseState(collapseState);
+
+      if (newState) {
+        let newCollapsedCount = 0;
+        const vc = collapseState[key]?.visibleCount || 2;
+        if (entrySource === 'order_list' || !currentOrderId) {
+          newCollapsedCount = Math.max(0, messages.length - vc);
+        } else {
+          const orderCardIndex = messages.findIndex(
+            (msg) => msg.orderCard && (msg.orderCard.id || (msg.orderCard as any).orderId) === currentOrderId
+          );
+          newCollapsedCount = orderCardIndex >= 0 ? orderCardIndex : Math.max(0, messages.length - vc);
+        }
+        setCollapsedCount(newCollapsedCount);
+      } else {
+        setCollapsedCount(0);
+      }
+
       return newState;
     });
-  }, [entrySource, currentOrderId]);
+  }, [entrySource, currentOrderId, messages]);
 
   const triggerBubble = useCallback((bubble: BubbleConfig) => {
     setCurrentBubble(bubble);
@@ -973,6 +1063,7 @@ export const AiAssistantProvider: React.FC<{
     isLoading,
     isHistoryCollapsed,
     collapsedCount,
+    visibleCount,
     bubbleEventContext,
     currentOrder: undefined,
     hasUnread,

@@ -60,6 +60,7 @@ const AiAssistantOverlay: React.FC = () => {
     showExistingReservationAlert,
     isHistoryCollapsed,
     collapsedCount,
+    visibleCount,
     toggleHistoryCollapsed,
     entrySource,
   } = useAiAssistantContext();

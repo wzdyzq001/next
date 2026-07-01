@@ -83,9 +83,19 @@ export interface OrderData {
 
 export type EntrySource = 'order_list' | 'order_detail' | 'bubble';
 
+export interface CollapseStateItem {
+  collapsed: boolean;
+  visibleCount: number;
+}
+
 export interface CollapseState {
-  order_list?: boolean;
-  [orderId: string]: boolean | undefined;
+  order_list?: CollapseStateItem;
+  [orderId: string]: CollapseStateItem | undefined;
+}
+
+export interface LastEntryState {
+  source: EntrySource;
+  orderId?: string;
 }
 
 export type BubbleType = 'persistent_short' | 'temporary_short' | 'long_collapsible';
@@ -162,6 +172,7 @@ export interface AiAssistantState {
   hasUnread: boolean;
   isHistoryCollapsed: boolean;
   collapsedCount: number;
+  visibleCount: number;
   bubbleEventContext?: {
     eventType: string;
     orderId: string;
