@@ -105,13 +105,6 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
           <span className="oc-hotel-date-label">离店</span>
           <span className="oc-hotel-date-value">{ext.hotelInfo.checkOutDate}</span>
         </div>
-        {ext.hotelInfo.statusTags && ext.hotelInfo.statusTags.length > 0 && (
-          <div className="oc-hotel-tags-row">
-            {ext.hotelInfo.statusTags.map((tag, i) => (
-              <span key={i} className={`oc-hotel-tag ${tag.type || 'default'}`}>{tag.text}</span>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -144,13 +137,6 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
           <span className="oc-hotel-date-label">入园时间</span>
           <span className="oc-hotel-date-value">{entryTime}</span>
         </div>
-        {ext.scenicInfo?.statusTags && ext.scenicInfo.statusTags.length > 0 && (
-          <div className="oc-hotel-tags-row">
-            {ext.scenicInfo.statusTags.map((tag, i) => (
-              <span key={i} className={`oc-hotel-tag ${tag.type || 'default'}`}>{tag.text}</span>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -178,9 +164,16 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
     }
     if (ext.pickupCode) {
       return (
-        <div className="oc-pickup-simple">
-          <span className="oc-pickup-code">{ext.pickupCode}</span>
-          <span className="oc-pickup-time">{ext.pickupTime}</span>
+        <div className="oc-pickup-with-progress">
+          <div className="oc-pickup-simple">
+            <span className="oc-pickup-code">{ext.pickupCode}</span>
+            <span className="oc-pickup-time">{ext.pickupTime}</span>
+          </div>
+          {ext.steps && ext.steps.length > 0 && (
+            <div className="oc-pickup-progress-steps">
+              {renderSteps()}
+            </div>
+          )}
         </div>
       );
     }

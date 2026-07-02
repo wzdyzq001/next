@@ -669,7 +669,7 @@ export function fetchOrderById(orderId: string): Promise<OrderData | null> {
           voucherCode: isScenic ? undefined : `9001 ${listItem.orderId.slice(-4)} 653`,
           refundInfo: buildRefundInfoFromListItem(listItem),
           productRules: {
-            validDate: isScenicGroupBuy ? '2026.07.01至2026.08.31' : isScenicCalendar ? '2026.06.29至2026.06.29' : isScenicPresale ? '2026.07.01至2026.10.31' : '2026-06-25 至 2026-07-25',
+            validDate: listItem.productRules?.validDate || (isScenicGroupBuy ? '2026.07.01至2026.08.31' : isScenicCalendar ? '2026.06.29至2026.06.29' : isScenicPresale ? '2026.07.01至2026.10.31' : '2026-06-25 至 2026-07-25'),
             invalidDate: isScenicGroupBuy ? '2026.07.15至2026.07.21' : undefined,
             notice: isTransport
               ? ['请携带有效身份证件', '建议提前2小时到达']
@@ -840,6 +840,11 @@ export function fetchOrderById(orderId: string): Promise<OrderData | null> {
             storeAddress: shouldUseListRefundState ? fallback.storeAddress : hit.order.storeAddress,
             status: shouldUseListRefundState ? fallback.status : hit.order.status,
             refundInfo: shouldUseListRefundState ? fallback.refundInfo : hit.order.refundInfo,
+            productRules: {
+              ...hit.order.productRules,
+              ...fallback.productRules,
+              validDate: fallback.productRules?.validDate || hit.order.productRules?.validDate,
+            },
           };
         })()
       : hit?.order
@@ -887,6 +892,11 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     category: 'fun',
     orderTime: '2026-06-25 10:20:00',
     thumbnail: '🎲',
+    productRules: {
+      validDate: '2026-06-25 至 2026-07-31',
+      notice: ['周一至周日可用', '需提前1天预约', '不与其他优惠同享'],
+      refundRule: '随时退 · 过期自动退'
+    },
   },
   {
     orderId: 'NL202606250002',
@@ -898,6 +908,11 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     category: 'fun',
     orderTime: '2026-06-24 18:30:00',
     thumbnail: '🎲',
+    productRules: {
+      validDate: '2026-06-20 至 2026-07-20',
+      notice: ['周一至周日可用', '需提前1天预约'],
+      refundRule: '随时退 · 过期自动退'
+    },
   },
   {
     orderId: 'MT2026061800101',
@@ -973,6 +988,11 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     category: 'food',
     orderTime: '2026-06-17 11:46:28',
     thumbnail: '🧃',
+    productRules: {
+      validDate: '2026-06-17 至 2026-07-31',
+      notice: ['不与其他优惠同享', '周末节假日通用'],
+      refundRule: '随时退 · 过期自动退'
+    },
   },
   {
     orderId: 'MT2026061700200',
@@ -1445,6 +1465,19 @@ function gen(
   deliveryAddress?: string,
 ): OrderListItem {
   generatedIdCounter++;
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 10);
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 30);
+  const formatDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const validDate = `${formatDate(startDate)} 至 ${formatDate(endDate)}`;
+
   return {
     orderId: `MT202606${generatedIdCounter}`,
     merchant,
@@ -1463,7 +1496,12 @@ function gen(
     totalQuantity: category === 'fun' ? 2 : 1,
     refundQuantity: ['退款成功', '退款申请中', '退款失败'].includes(statusText) ? 1 : undefined,
     orderTime: '2026-06-17 10:00:00',
-    thumbnail
+    thumbnail,
+    productRules: {
+      validDate,
+      notice: ['不与其他优惠同享', '周末节假日通用'],
+      refundRule: '随时退 · 过期自动退'
+    }
   };
 }
 
@@ -1480,6 +1518,14 @@ const colorMap: Record<string, any> = {
   '预约成功': 'green',
   '预订确认中': 'blue',
   '预订成功': 'green',
+  '待接单': 'orange',
+  '制作中': 'blue',
+  '配送中': 'blue',
+  '待取餐': 'blue',
+  '已入住': 'green',
+  '已入园': 'green',
+  '待出行': 'green',
+  '行程中': 'green',
 };
 
 const cat1Statuses = ['待支付', '待使用', '交易完成', '退款成功', '退款申请中', '退款失败'];
@@ -1521,4 +1567,40 @@ export const ORDER_LIST: OrderListItem[] = [
   gen('麦当劳(知春路店)', '双人牛排套餐（券码+配送）', 'food', '待使用', 'orange', '🥩', undefined, undefined, undefined, ['code', 'delivery'], '紫金数码科技园4号楼东区'),
   gen('麦当劳(知春路店)', '双人牛排套餐（点单+券码+配送）', 'food', '待使用', 'orange', '🥩', undefined, undefined, undefined, ['order', 'code', 'delivery'], '紫金数码科技园4号楼东区'),
   gen('肯德基(五道口店)', '全家桶套餐（点单+配送）', 'food', '待使用', 'orange', '🍗', undefined, undefined, undefined, ['order', 'delivery'], '中关村软件园2号楼'),
+
+  // ===== 补充：餐饮-仅券码(code) - 其他状态 =====
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '待支付', colorMap['待支付'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '交易完成', colorMap['交易完成'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '订单取消', colorMap['订单取消'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款申请中', colorMap['退款申请中'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款成功', colorMap['退款成功'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款失败', colorMap['退款失败'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('海底捞(知春路店)', '番茄锅底双人套餐（仅券码）', 'food', '制作中', colorMap['制作中'], '🍲', undefined, undefined, undefined, ['code']),
+
+  // ===== 补充：餐饮-仅点单(order) - 其他状态 =====
+  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '待接单', colorMap['待接单'], '☕', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '制作中', colorMap['制作中'], '☕', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '待取餐', colorMap['待取餐'], '☕', undefined, undefined, undefined, ['order']),
+
+  // ===== 补充：餐饮-仅配送(delivery) - 其他状态 =====
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '待支付', colorMap['待支付'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '待接单', colorMap['待接单'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '制作中', colorMap['制作中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '配送中', colorMap['配送中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '交易完成', colorMap['交易完成'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+
+  // ===== 补充：酒店 - 已入住 =====
+  gen('万豪酒店预售', '豪华海景房2晚通兑券', 'hotel', '已入住', colorMap['已入住'], '🏨', 'presale_voucher'),
+  gen('希尔顿酒店(日历房)', '高级大床房 1晚', 'hotel', '已入住', colorMap['已入住'], '🛏️', 'calendar_room'),
+
+  // ===== 补充：景区 - 已入园 =====
+  gen('环球影城(预售)', '儿童票预售券', 'scenic', '已入园', colorMap['已入园'], '🎡', undefined, 'presale_voucher'),
+  gen('故宫博物院', '上午场门票(指定日)', 'scenic', '已入园', colorMap['已入园'], '🏛️', undefined, 'calendar_ticket'),
+
+  // ===== 补充：旅行社 - 待出行、行程中 =====
+  gen('中国青年旅行社', '三亚游艇环岛4天3晚 蓝高450帆船包船出海', 'travel', '待出行', colorMap['待出行'], '🌊', undefined, undefined, 'presale_voucher'),
+  gen('中国青年旅行社', '三亚游艇环岛4天3晚 蓝高450帆船包船出海', 'travel', '行程中', colorMap['行程中'], '🌊', undefined, undefined, 'presale_voucher'),
+
+  // ===== 补充：综合娱乐(fun) - 订单取消 =====
+  gen('星聚会KTV', '3小时欢唱套餐', 'fun', '订单取消', colorMap['订单取消'], '🎤'),
 ];

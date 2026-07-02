@@ -17,9 +17,11 @@ export function RedeemReminderCard({
   onReset,
 }: RedeemReminderCardProps) {
   const isCanceled = reminder.status === 'canceled';
-  const now = Date.now();
-  const diffMs = reminder.remindAt - now;
-  const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const remindDate = new Date(reminder.remindAt);
+  remindDate.setHours(0, 0, 0, 0);
+  const diffDays = Math.max(0, Math.round((remindDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
   const date = new Date(reminder.remindAt);
   const month = date.getMonth() + 1;
   const day = date.getDate();

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import './orderCardDemo.css';
 import { ReservationPanel } from './ReservationPanel';
 import type { ReservationInfoCardData } from './ReservationInfoCard';
 import { RedeemReminderSheet } from './RedeemReminderSheet';
 import type { RedeemReminder } from '../../types';
 import { VoucherCodeSheet } from './VoucherCodeSheet';
+import { useAiAssistantContext } from './AiAssistantProvider';
 
 interface DemoOrder {
   id: string;
@@ -147,7 +149,6 @@ const demoOrders: DemoOrder[] = [
     statusText: '待使用',
     statusColor: 'orange',
     actions: [
-      { label: '⏰ 使用提醒', type: 'secondary' },
       { label: '🎫 查看券码', type: 'secondary' },
       { label: '立即点单', type: 'primary' },
     ],
@@ -179,7 +180,6 @@ const demoOrders: DemoOrder[] = [
     statusText: '待使用',
     statusColor: 'orange',
     actions: [
-      { label: '⏰ 使用提醒', type: 'secondary' },
       { label: '🎫 查看券码', type: 'secondary' },
       { label: '立即配送', type: 'primary' },
     ],
@@ -211,7 +211,6 @@ const demoOrders: DemoOrder[] = [
     statusText: '待使用',
     statusColor: 'orange',
     actions: [
-      { label: '⏰ 使用提醒', type: 'secondary' },
       { label: '立即点单', type: 'secondary' },
       { label: '立即配送', type: 'primary' },
     ],
@@ -743,7 +742,7 @@ const demoOrders: DemoOrder[] = [
     statusColor: 'orange',
     actions: [
       { label: '🎫 查看券码', type: 'primary' },
-      { label: '提前预约免排队', type: 'secondary' },
+      { label: '帮我约', type: 'secondary' },
     ],
     suggestions: ['可以带零食进去吗？', '周末可以用吗？', '怎么预约？'],
     voucherInfo: {
@@ -1269,8 +1268,8 @@ const demoOrders: DemoOrder[] = [
     statusText: '待使用',
     statusColor: 'orange',
     actions: [
-      { label: '🎫 查看券码', type: 'primary' },
       { label: '⏰ 使用提醒', type: 'secondary' },
+      { label: '🎫 查看券码', type: 'primary' },
     ],
     suggestions: ['这个券怎么用', '有效期到什么时候', '可以退吗'],
     voucherInfo: {
@@ -2969,6 +2968,8 @@ const demoOrders: DemoOrder[] = [
 ];
 
 export function AiOrderCardDemo() {
+  const { overlayMode, toggleFullscreen } = useAiAssistantContext();
+  const isFullscreen = overlayMode === 'fullscreen';
   const [activeTab, setActiveTab] = useState<'full' | 'compact' | 'scenes' | 'function'>('full');
   const [expandedCompact, setExpandedCompact] = useState<string | null>(null);
   const [showFunctionCard, setShowFunctionCard] = useState<string | null>(null);
@@ -2986,6 +2987,13 @@ export function AiOrderCardDemo() {
   const [voucherOpen, setVoucherOpen] = useState(false);
   const [voucherOrder, setVoucherOrder] = useState<DemoOrder | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const anySheetOpen = reservationOpen || reminderOpen || voucherOpen;
+    if (anySheetOpen && !isFullscreen) {
+      toggleFullscreen();
+    }
+  }, [reservationOpen, reminderOpen, voucherOpen, isFullscreen, toggleFullscreen]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -3204,13 +3212,13 @@ export function AiOrderCardDemo() {
                 <div className="demo-store-actions">
                   {order.category !== 'travel_agency' && (
                     <button className="demo-store-icon-btn" title="导航">
-                      <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                      <svg viewBox="0 0 16 16" fill="none" preserveAspectRatio="xMidYMid meet">
                         <path d="M2.5 12L13.5 2.5L8.5 13.5L6.8 10.7L4 11.5L2.5 12Z" fill="#86909c"/>
                       </svg>
                     </button>
                   )}
                   <button className="demo-store-icon-btn" title="电话">
-                    <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                    <svg viewBox="0 0 16 16" fill="none" preserveAspectRatio="xMidYMid meet">
                       <path d="M3.5 2.5L5.5 2L7 5.5L5.5 6.5C6 7.5 7 8.5 8 9.5C9 10.5 10 11 11 11.5L12 10L15 11.5V14C15 14.5 14.5 15 14 15C6 15 1.5 10.5 1.5 3C1.5 2.5 2 2.5 2.5 2.5Z" fill="#86909c"/>
                     </svg>
                   </button>
@@ -3423,12 +3431,15 @@ export function AiOrderCardDemo() {
 
         {!isCompact && order.suggestions.length > 0 && (
           <div className="demo-card-suggestions">
-            <div className="demo-suggestions-list">
-              {order.suggestions.map((s, i) => (
-                <button key={i} className="demo-suggestion-btn">
-                  {s.replace(/\？|\?/g, '')}
-                </button>
-              ))}
+            <div className="demo-suggestions-row">
+              <span className="demo-suggestions-label">猜你想问</span>
+              <div className="demo-suggestions-list">
+                {order.suggestions.map((s, i) => (
+                  <button key={i} className="demo-suggestion-btn">
+                    {s.replace(/\？|\?/g, '')}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -3921,35 +3932,40 @@ export function AiOrderCardDemo() {
         {activeTab === 'scenes' && renderScenesDemo()}
       </div>
 
-      <ReservationPanel
-        open={reservationOpen}
-        onClose={() => setReservationOpen(false)}
-        onConfirm={(data) => {
-          setDemoReservationResult(data);
-          setReservationOpen(false);
-        }}
-        storeName={reservationOrder?.storeName || '门店'}
-        businessHours="09:00-22:00"
-      />
+      {ReactDOM.createPortal(
+        <>
+          <ReservationPanel
+            open={reservationOpen}
+            onClose={() => setReservationOpen(false)}
+            onConfirm={(data) => {
+              setDemoReservationResult(data);
+              setReservationOpen(false);
+            }}
+            storeName={reservationOrder?.storeName || '门店'}
+            businessHours="09:00-22:00"
+          />
 
-      <RedeemReminderSheet
-        orderId={reminderOrder?.id || null}
-        productName={reminderOrder?.productName}
-        validDate="2026-06-30 至 2026-12-31"
-        open={reminderOpen}
-        onClose={() => setReminderOpen(false)}
-        onConfirm={(reminder) => {
-          setDemoReminderResult(reminder);
-        }}
-      />
+          <RedeemReminderSheet
+            orderId={reminderOrder?.id || null}
+            productName={reminderOrder?.productName}
+            validDate="2026-06-30 至 2026-12-31"
+            open={reminderOpen}
+            onClose={() => setReminderOpen(false)}
+            onConfirm={(reminder) => {
+              setDemoReminderResult(reminder);
+            }}
+          />
 
-      <VoucherCodeSheet
-        open={voucherOpen}
-        onClose={() => setVoucherOpen(false)}
-        storeName={voucherOrder?.storeName}
-        productName={voucherOrder?.productName}
-        voucherCode={voucherOrder?.voucherInfo?.code}
-      />
+          <VoucherCodeSheet
+            open={voucherOpen}
+            onClose={() => setVoucherOpen(false)}
+            storeName={voucherOrder?.storeName}
+            productName={voucherOrder?.productName}
+            voucherCode={voucherOrder?.voucherInfo?.code}
+          />
+        </>,
+        document.body
+      )}
     </div>
   );
 }

@@ -1,0 +1,480 @@
+.cm-demo-page {
+  width: 100%;
+  min-height: 100vh;
+  background: #f0f2f5;
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.cm-demo-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.cm-demo-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2329;
+  margin: 0 0 6px 0;
+}
+
+.cm-demo-subtitle {
+  font-size: 13px;
+  color: #86909c;
+  margin: 0;
+}
+
+.cm-demo-controls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.cm-mode-switch {
+  display: flex;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cm-mode-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: #4e5969;
+  cursor: pointer;
+  border-radius: 18px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.cm-mode-btn.active {
+  background: linear-gradient(135deg, #165dff, #4080ff);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(22, 93, 255, 0.3);
+}
+
+.cm-option-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.cm-option-chip {
+  padding: 6px 14px;
+  border: 1px solid #e5e6eb;
+  background: #ffffff;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.cm-option-chip.active {
+  border-color: #165dff;
+  background: rgba(22, 93, 255, 0.08);
+  color: #165dff;
+  font-weight: 500;
+}
+
+.cm-demo-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cm-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.cm-single-demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.cm-single-info {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+}
+
+.cm-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cm-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.cm-info-label {
+  color: #86909c;
+  flex-shrink: 0;
+}
+
+.cm-info-value {
+  color: #1f2329;
+  font-weight: 500;
+  flex: 1;
+}
+
+.cm-demo-footer {
+  max-width: 800px;
+  margin: 30px auto 0;
+}
+
+.cm-recommend {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cm-recommend h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.cm-recommend p {
+  margin: 0;
+  font-size: 13px;
+  color: #4e5969;
+  line-height: 1.6;
+}
+
+.cm-recommend strong {
+  color: #165dff;
+}
+
+/* ============ Demo 容器 ============ */
+
+.cm-demo-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cm-demo-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.cm-demo-label-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.cm-demo-label-desc {
+  font-size: 11px;
+  color: #86909c;
+}
+
+/* ============ 模拟消息列表 ============ */
+
+.cm-message-list {
+  background: #f7f8fa;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e5e6eb;
+  min-height: 300px;
+}
+
+.cm-message {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.cm-message.user {
+  flex-direction: row-reverse;
+}
+
+.cm-message:last-child {
+  margin-bottom: 0;
+}
+
+.cm-message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #08223D, #0D4A75);
+}
+
+.cm-message-avatar.user {
+  background: linear-gradient(135deg, #165dff, #4080ff);
+}
+
+.cm-avatar-icon {
+  font-size: 16px;
+}
+
+.cm-message-avatar.user .cm-avatar-icon {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cm-message-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.cm-message.assistant .cm-message-bubble {
+  background: #ffffff;
+  border: 1px solid #eef0f3;
+  border-top-left-radius: 4px;
+}
+
+.cm-message.user .cm-message-bubble {
+  background: linear-gradient(135deg, #165dff, #4080ff);
+  color: #ffffff;
+  border-top-right-radius: 4px;
+}
+
+.cm-message-bubble.cm-text-bubble {
+  max-width: 75%;
+}
+
+.cm-message-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2329;
+}
+
+.cm-message.user .cm-message-text {
+  color: #ffffff;
+}
+
+/* ============ 订单卡片消息（无气泡，卡片直接作为消息内容） ============ */
+
+.cm-message.assistant.has-order-card .cm-order-card {
+  flex-shrink: 0;
+}
+
+/* ============ 订单卡片 ============ */
+
+.cm-order-card {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  width: 100%;
+}
+
+.cm-card-base {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.cm-card-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.cm-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cm-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cm-card-title-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cm-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.cm-card-name {
+  font-size: 13px;
+  margin-bottom: 3px;
+  color: #1f2329;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cm-card-tags {
+  font-size: 11px;
+  margin-bottom: 3px;
+  color: #86909c;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.cm-tag {
+  font-size: 11px;
+  color: #86909c;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cm-tag-sep {
+  color: #c9cdd4;
+}
+
+.cm-card-status {
+  font-size: 11px;
+  font-weight: 500;
+  color: #ff6b6b;
+  flex-shrink: 0;
+}
+
+.cm-card-status.status-blue {
+  color: #165dff;
+}
+
+.cm-card-status.status-green {
+  color: #00b42a;
+}
+
+.cm-card-status.status-orange {
+  color: #ff7d00;
+}
+
+.cm-card-store {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 11px;
+  color: #86909c;
+}
+
+.cm-store-distance {
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.cm-store-name {
+  font-size: 11px;
+  color: #4e5969;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.cm-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+}
+
+.cm-price-symbol {
+  font-size: 10px;
+  color: #1f2329;
+  font-weight: 400;
+}
+
+.cm-price-num {
+  font-size: 13px;
+  color: #1f2329;
+  font-weight: 500;
+}
+
+.cm-card-actions {
+  padding: 6px 12px 10px;
+  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cm-action-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 11px;
+  gap: 3px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.cm-action-btn.primary {
+  background: linear-gradient(135deg, #ff8a8a 0%, #ffa898 100%);
+  color: #ffffff;
+}
+
+.cm-action-btn.secondary {
+  background: #f2f3f5;
+  color: #4e5969;
+}
+
+.cm-action-btn:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .cm-demo-page {
+    padding: 12px;
+  }
+
+  .cm-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}

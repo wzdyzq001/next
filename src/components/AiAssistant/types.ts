@@ -203,7 +203,7 @@ export interface AiAssistantContextValue extends AiAssistantState {
   switchOrder: (orderId: string) => void;
   executeAction: (action: MessageAction) => void;
   clickGuidedQuestion: (question: GuidedQuestion) => void;
-  submitFeatureCard: (cardType: string, data: Record<string, unknown>) => void;
+  submitFeatureCard: (cardType: string, data: Record<string, unknown>) => Promise<void>;
   cancelFeatureCard: () => void;
   checkServiceHealth: () => Promise<void>;
   setDegradeLevel: (level: DegradeLevel) => void;
@@ -212,6 +212,7 @@ export interface AiAssistantContextValue extends AiAssistantState {
   setTransferHuman: (state: 'idle' | 'transferring' | 'chatting') => void;
   wsState: WSConnectionState;
   showToast: (text: string) => void;
+  toastText: string | null;
   dismissNotification: () => void;
   openReminderSheet: (orderId: string, productName?: string, validDate?: string) => void;
   closeReminderSheet: () => void;
@@ -233,8 +234,11 @@ export interface AiAssistantContextValue extends AiAssistantState {
   closeVoucherSheet: () => void;
   onOpenReservation?: (orderId: string, category: string, productType?: string) => void;
   sendOrderCard: (order: OrderListItem | OrderData) => void;
+  placeOrder: (orderId: string) => Promise<void>;
+  startDelivery: (orderId: string) => Promise<void>;
   checkExistingReservation: (orderId?: string) => ReservationInfoCardData | null;
   showExistingReservationAlert: (reservation: ReservationInfoCardData) => void;
+  clearChatHistory: () => void;
 }
 
 export interface ApiResponse<T = unknown> {

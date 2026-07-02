@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReservationInfoCardData } from './ReservationInfoCard';
+import ConfirmDialog from './ConfirmDialog';
 
 interface ReservationPanelProps {
   open: boolean;
@@ -22,6 +23,15 @@ export function ReservationPanel({
   const [pax, setPax] = useState(1);
   const [selectedDateIdx, setSelectedDateIdx] = useState(0);
   const [showStoreList, setShowStoreList] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingReservationData, setPendingReservationData] = useState<ReservationInfoCardData | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, [open]);
 
   const mockStores = useMemo(() => {
     const baseName = storeName.replace(/\(.*?\)/, '');
@@ -63,20 +73,6 @@ export function ReservationPanel({
     setShowStoreList(false);
   }, [mockStores, initialReservation, open]);
 
-  const dates = useMemo(() => {
-    const dayLabels = ['日', '一', '二', '三', '四', '五', '六'];
-    return Array.from({ length: 7 }, (_, index) => {
-      const d = new Date();
-      d.setDate(d.getDate() + index);
-      const month = d.getMonth() + 1;
-      const date = d.getDate();
-      const day = index === 0 ? '今天' : index === 1 ? '明天' : `周${dayLabels[d.getDay()]}`;
-      return { day, date: `${month}.${date}` };
-    });
-  }, [currentStore.name]);
-
-  if (!open) return null;
-
   const generateTimeSlots = () => {
     const slots = [];
     let startHour = 9, startMin = 0;
@@ -117,7 +113,64 @@ export function ReservationPanel({
     return slots;
   };
 
-  const timeSlots = generateTimeSlots();
+  const isTimeSlotPast = (time: string) => {
+    const nowDate = new Date(now);
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotTime = new Date(now);
+    slotTime.setHours(hours, minutes, 0, 0);
+    return slotTime <= nowDate;
+  };
+
+  const dates = useMemo(() => {
+    const dayLabels = ['日', '一', '二', '三', '四', '五', '六'];
+    const rawDates = Array.from({ length: 7 }, (_, index) => {
+      const d = new Date();
+      d.setDate(d.getDate() + index);
+      const month = d.getMonth() + 1;
+      const date = d.getDate();
+      const day = index === 0 ? '今天' : index === 1 ? '明天' : `周${dayLabels[d.getDay()]}`;
+      return { day, date: `${month}.${date}` };
+    });
+
+    const slots = generateTimeSlots();
+    const availableSlots = slots.filter((t) => !isTimeSlotPast(t));
+    if (availableSlots.length === 0) {
+      return rawDates.slice(1);
+    }
+    return rawDates;
+  }, [currentStore.name, now]);
+
+  const timeSlots = useMemo(() => {
+    const allSlots = generateTimeSlots();
+    if (dates[selectedDateIdx]?.day === '今天') {
+      return allSlots
+        .filter((time) => !isTimeSlotPast(time))
+        .map((time) => ({
+          time,
+          isPast: false,
+        }));
+    }
+    return allSlots.map((time) => ({
+      time,
+      isPast: false,
+    }));
+  }, [dates, selectedDateIdx, currentStore.name, now]);
+
+  useEffect(() => {
+    if (dates[selectedDateIdx]?.day !== '今天') return;
+    if (selectedTime && isTimeSlotPast(selectedTime)) {
+      setSelectedTime(null);
+    }
+  }, [dates, selectedDateIdx, selectedTime]);
+
+  useEffect(() => {
+    if (selectedDateIdx >= dates.length && dates.length > 0) {
+      setSelectedDateIdx(0);
+      setSelectedTime(null);
+    }
+  }, [dates, selectedDateIdx]);
+
+  if (!open) return null;
 
   return (
     <div className={`reservation-drawer-overlay ${open ? 'open' : ''}`} onClick={onClose}>
@@ -128,7 +181,7 @@ export function ReservationPanel({
       <div className={`reservation-drawer ${open ? 'open' : ''}`} onClick={e => e.stopPropagation()}>
         <div className="reservation-drawer-header">
           <div className="title-group">
-            <h3>预约服务</h3>
+            <h3>帮我约</h3>
             <span className="subtitle">提前约7日热门时间·可随时取消</span>
           </div>
           <button className="close-btn" onClick={onClose}>
@@ -177,16 +230,17 @@ export function ReservationPanel({
                 ))}
               </div>
               <div className="time-grid">
-                {timeSlots.map((time, idx) => {
-                  const isBusy = selectedDateIdx === 0 ? (idx === 3 || idx === 7) : (idx % 4 === 0);
+                {timeSlots.map((slot, idx) => {
+                  const isBusy = idx % 4 === 0;
+                  const isDisabled = isBusy;
                   return (
                     <button
-                      key={time}
-                      className={`time-slot ${selectedTime === time ? 'active' : ''} ${isBusy ? 'busy' : ''}`}
-                      onClick={() => !isBusy && setSelectedTime(time)}
-                      disabled={isBusy}
+                      key={slot.time}
+                      className={`time-slot ${selectedTime === slot.time ? 'active' : ''} ${isBusy ? 'busy' : ''}`}
+                      onClick={() => !isDisabled && setSelectedTime(slot.time)}
+                      disabled={isDisabled}
                     >
-                      <span className="time">{time}</span>
+                      <span className="time">{slot.time}</span>
                       <span className="status">{isBusy ? '繁忙' : '可约'}</span>
                     </button>
                   );
@@ -220,17 +274,20 @@ export function ReservationPanel({
             disabled={!selectedTime}
             onClick={() => {
               if (!selectedTime) return;
-              onConfirm({
+              const data = {
                 storeName: currentStore.name,
                 storeAddress: currentStore.address,
                 businessHours: currentStore.businessHours,
                 arrivalTime: `${dates[selectedDateIdx].date} ${selectedTime}`,
                 pax,
                 phone: '158****8127',
-                acceptStatus: 'pending',
+                acceptStatus: 'pending' as const,
                 estimatedAcceptTime: '等待商家接单',
                 acceptDeadlineAt: Date.now() + 5 * 60 * 1000,
-              });
+                orderId: initialReservation?.orderId,
+              };
+              setPendingReservationData(data);
+              setShowConfirmDialog(true);
             }}
           >
             确定
@@ -277,6 +334,26 @@ export function ReservationPanel({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showConfirmDialog}
+        title="确认预约"
+        message={`您确定要预约 ${dates[selectedDateIdx].date} ${pendingReservationData?.arrivalTime.split(' ')[1]} ${pax}人吗？`}
+        confirmText="确认预约"
+        cancelText="取消"
+        confirmButtonType="primary"
+        onConfirm={() => {
+          if (pendingReservationData) {
+            onConfirm(pendingReservationData);
+          }
+          setShowConfirmDialog(false);
+          setPendingReservationData(null);
+        }}
+        onCancel={() => {
+          setShowConfirmDialog(false);
+          setPendingReservationData(null);
+        }}
+      />
     </div>
   );
 }

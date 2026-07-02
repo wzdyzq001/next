@@ -1,8 +1,28 @@
 .oc-order-card {
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.oc-order-card.status-updating {
+  animation: statusPulse 0.6s ease-in-out;
+}
+
+@keyframes statusPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(22, 93, 255, 0.15);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
 }
 
 /* --- 基础层 --- */
@@ -10,7 +30,7 @@
 .oc-card-base {
   display: flex;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 14px;
 }
 
 .oc-card-thumb {
@@ -23,6 +43,19 @@
   justify-content: center;
   font-size: 32px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.oc-card-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.oc-card-thumb-emoji {
+  font-size: 32px;
+  line-height: 1;
+  user-select: none;
 }
 
 .oc-card-info {
@@ -69,40 +102,39 @@
   font-size: 12px;
   flex-shrink: 0;
   font-weight: 500;
-  color: #ff6b6b;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .oc-card-status.status-green {
-  color: #00B42A;
+  color: #059669;
 }
 
 .oc-card-status.status-orange {
-  color: #FF7D00;
+  color: #EF4444;
 }
 
 .oc-card-status.status-blue {
-  color: #165DFF;
+  color: #2563EB;
 }
 
 .oc-card-status.status-gray {
-  color: #86909C;
+  color: #6B7280;
 }
 
 .oc-card-status.status-red {
-  color: #F53F3F;
+  color: #EF4444;
 }
 
 .oc-card-tags {
   display: flex;
   align-items: center;
   gap: 0;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  flex-wrap: wrap;
   font-size: 12px;
   color: #86909c;
   margin-bottom: 4px;
+  row-gap: 4px;
 }
 
 .oc-tag {
@@ -137,6 +169,8 @@
   color: #4e5969;
   flex: 1;
   min-width: 0;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .oc-store-actions {
@@ -148,8 +182,8 @@
 }
 
 .oc-store-icon-btn {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,6 +192,16 @@
   cursor: pointer;
   padding: 0;
   color: #86909c;
+  flex-shrink: 0;
+}
+
+.oc-store-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .oc-store-icon-btn:hover {
@@ -187,8 +231,13 @@
 
 .oc-card-extension {
   margin: 0 14px;
-  padding: 8px 0;
-  border-top: none;
+  padding: 12px 0;
+  border-top: 1px dashed #f2f3f5;
+  box-sizing: border-box;
+  min-width: 0;
+  width: calc(100% - 28px);
+  max-width: calc(100% - 28px);
+  overflow: hidden;
 }
 
 .oc-extension-title {
@@ -196,6 +245,13 @@
   font-weight: 600;
   color: #1f2329;
   margin-bottom: 10px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* 进度条 */
@@ -205,6 +261,10 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .oc-progress-title {
@@ -214,6 +274,7 @@
   font-size: 14px;
   font-weight: 500;
   color: #4e5969;
+  flex-shrink: 0;
 }
 
 .oc-progress-icon {
@@ -228,6 +289,8 @@
   padding: 4px 10px;
   border-radius: 12px;
   font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .oc-progress-estimate.blue {
@@ -324,6 +387,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .oc-info-item {
@@ -331,15 +398,28 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  gap: 12px;
 }
 
 .oc-info-label {
   color: #86909c;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .oc-info-value {
   color: #1f2329;
   font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 /* 配送完成折叠 */
@@ -408,18 +488,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
 }
 
 .oc-pickup-code {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
   color: #FF7D00;
   letter-spacing: 2px;
+  line-height: 1.2;
 }
 
 .oc-pickup-time {
-  font-size: 12px;
+  font-size: 13px;
   color: #86909c;
 }
 
@@ -432,33 +512,62 @@
   color: #86909c;
 }
 
+.oc-pickup-with-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.oc-pickup-with-progress .oc-pickup-simple {
+  padding: 0;
+}
+
+.oc-pickup-progress-steps {
+  padding-top: 4px;
+}
+
 /* 酒店扩展层 */
 .oc-hotel-extension {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .oc-hotel-stay-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .oc-hotel-stay-label {
   font-size: 12px;
   color: #86909c;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .oc-hotel-stay-name {
   font-size: 13px;
   color: #1f2329;
   font-weight: 500;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  word-break: break-all;
 }
 
 .oc-hotel-stay-actions {
@@ -481,6 +590,7 @@
   font-size: 14px;
   padding: 0;
   color: #4e5969;
+  flex-shrink: 0;
 }
 
 .oc-hotel-icon-btn:hover {
@@ -490,34 +600,48 @@
 .oc-nav-icon {
   width: 16px;
   height: 16px;
+  max-width: 100%;
+  flex-shrink: 0;
 }
 
 .oc-hotel-date-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 13px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .oc-hotel-date-label {
   font-size: 12px;
   color: #86909c;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .oc-hotel-date-value {
   color: #1f2329;
   font-weight: 500;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
 }
 
 .oc-hotel-nights {
   font-size: 12px;
   color: #86909c;
-  padding: 2px 8px;
+  padding: 2px 6px;
   background: #f2f3f5;
   border-radius: 4px;
-  margin: 0 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .oc-hotel-tags-row {
@@ -525,12 +649,20 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .oc-hotel-tag {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.5;
 }
 
@@ -557,24 +689,35 @@
   padding: 10px 14px;
   background: #f7f8fa;
   border-radius: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 12px;
 }
 
 .oc-refund-status-text {
   font-size: 13px;
   color: #4e5969;
   font-weight: 500;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .oc-refund-status-amount {
   font-size: 14px;
   color: #1f2329;
   font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* --- 操作层 --- */
 
 .oc-card-actions {
-  padding: 8px 14px 12px;
+  padding: 10px 14px 14px;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -669,8 +812,23 @@
 
 .oc-card-suggestions {
   margin: 0 14px;
-  padding: 12px 0 14px;
+  padding: 12px 0 16px;
   border-top: 1px solid #f2f3f5;
+}
+
+.oc-suggestions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.oc-suggestions-label {
+  font-size: 12px;
+  color: #86909c;
+  font-weight: 500;
+  line-height: 1.4;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .oc-suggestions-list {
@@ -682,13 +840,20 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 4px;
-  padding-left: 14px;
-  padding-right: 14px;
-  margin-left: -14px;
-  margin-right: -14px;
+  touch-action: pan-x;
+  flex: 1;
+  min-width: 0;
   cursor: grab;
   user-select: none;
+}
+
+.oc-suggestions-list.dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+}
+
+.oc-suggestions-list.dragging .oc-suggestion-btn {
+  pointer-events: none;
 }
 
 .oc-suggestions-list::-webkit-scrollbar {
@@ -750,6 +915,19 @@
   justify-content: center;
   font-size: 28px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.oc-compact-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.oc-compact-thumb-emoji {
+  font-size: 28px;
+  line-height: 1;
+  user-select: none;
 }
 
 .oc-compact-info {
@@ -794,13 +972,29 @@
 .oc-compact-status {
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
-.oc-compact-status.status-red { color: #ff6b6b; }
-.oc-compact-status.status-blue { color: #165dff; }
-.oc-compact-status.status-green { color: #00b42a; }
-.oc-compact-status.status-orange { color: #ff7d00; }
-.oc-compact-status.status-gray { color: #86909c; }
+.oc-compact-status.status-green {
+  color: #059669;
+}
+
+.oc-compact-status.status-orange {
+  color: #EF4444;
+}
+
+.oc-compact-status.status-blue {
+  color: #2563EB;
+}
+
+.oc-compact-status.status-gray {
+  color: #6B7280;
+}
+
+.oc-compact-status.status-red {
+  color: #EF4444;
+}
 
 .oc-compact-action-btn {
   flex-shrink: 0;

@@ -1621,19 +1621,19 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink-base);
-  margin: 16px 0 10px;
+  margin: 12px 0 8px;
 }
 
 .redeem-reminder-quick-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .redeem-reminder-quick-option {
-  padding: 14px 8px;
+  padding: 10px 6px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   cursor: pointer;
   text-align: center;
@@ -1647,9 +1647,10 @@ body {
 }
 
 .redeem-reminder-quick-option .day {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-base);
+  line-height: 1.2;
 }
 
 .redeem-reminder-quick-option.active .day {
@@ -1657,9 +1658,10 @@ body {
 }
 
 .redeem-reminder-quick-option .date {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-mute);
   margin-top: 2px;
+  line-height: 1.2;
 }
 
 .redeem-reminder-date-picker {

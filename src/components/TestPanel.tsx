@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAiAssistantContext } from './AiAssistant';
 import { STORAGE_KEY_CHAT_HISTORY, COLLAPSE_STATE_STORAGE_KEY, LAST_ENTRY_STORAGE_KEY } from './AiAssistant/constants';
 import type { ChatMessage, ConversationContext, LastEntryState, CollapseState } from './AiAssistant/types';
+import { setReminder as setReminderStorage } from '../redeemReminder';
 
 const genId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
@@ -26,7 +27,13 @@ const makeMessage = (role: 'user' | 'assistant', content: string, offset = 0): C
 const ORDER_A = 'MT2026061800101';
 const ORDER_B = 'MT2026061800102';
 
-const TestPanel: React.FC = () => {
+interface TestPanelProps {
+  onOpenStatusFlowDemo?: () => void;
+  onOpenInteractionMap?: () => void;
+  onOpenOrderCardDemo?: () => void;
+}
+
+const TestPanel: React.FC<TestPanelProps> = ({ onOpenStatusFlowDemo, onOpenInteractionMap, onOpenOrderCardDemo }) => {
   const {
     openAssistant,
     closeAssistant,
@@ -91,6 +98,12 @@ const TestPanel: React.FC = () => {
     state[key] = { collapsed, visibleCount };
     localStorage.setItem(COLLAPSE_STATE_STORAGE_KEY, JSON.stringify(state));
     addLog(`📦 设置折叠状态: key=${key}, collapsed=${collapsed}, visibleCount=${visibleCount}`);
+  };
+
+  const setReminderForOrder = (orderId: string, daysFromNow = 3) => {
+    const remindAt = Date.now() + daysFromNow * 24 * 60 * 60 * 1000;
+    setReminderStorage(orderId, remindAt);
+    addLog(`⏰ 设置使用提醒: orderId=${orderId}, ${daysFromNow}天后`);
   };
 
   const verifyScenario = (name: string, expected: {
@@ -329,6 +342,103 @@ const TestPanel: React.FC = () => {
     }, 200);
   };
 
+  const runScenario7 = () => {
+    addLog('========== 🧪 场景7：有使用提醒的订单详情页进入（最多1张订单卡片） ==========');
+    addLog('规则：有使用提醒的订单进入，只发1条消息（订单卡片+使用提醒），不能有2张订单卡片');
+    clearAllStorage();
+
+    setTimeout(() => {
+      setReminderForOrder(ORDER_A, 3);
+
+      setTimeout(() => {
+        addLog(`操作：从订单详情页进入有提醒的订单（${ORDER_A}）`);
+        openAssistant(ORDER_A, 'order_detail');
+
+        setTimeout(() => {
+          const orderCardCount = messages.filter(m => m.orderCard).length;
+          const reminderCardCount = messages.filter(m => m.redeemReminder).length;
+          const passed = orderCardCount === 1 && reminderCardCount === 1;
+          const status = passed ? '✅' : '❌';
+          addLog(`${status} 有提醒订单进入（最多1张订单卡片）`);
+          addLog(`   预期: 订单卡片=1张, 提醒卡片=1张`);
+          addLog(`   实际: 订单卡片=${orderCardCount}张, 提醒卡片=${reminderCardCount}张`);
+          addLog(`   messages总数=${messages.length}`);
+        }, 300);
+      }, 200);
+    }, 200);
+  };
+
+  const runScenario8 = () => {
+    addLog('========== 🧪 场景8：有使用提醒的同订单重复进入（不重复发送） ==========');
+    addLog('规则：同订单重复进入，不重复添加订单卡片和使用提醒卡片');
+    clearAllStorage();
+
+    setTimeout(() => {
+      setReminderForOrder(ORDER_A, 3);
+
+      setTimeout(() => {
+        addLog('步骤1：第一次进入订单A详情页');
+        openAssistant(ORDER_A, 'order_detail');
+
+        setTimeout(() => {
+          const firstOrderCardCount = messages.filter(m => m.orderCard).length;
+          const firstReminderCount = messages.filter(m => m.redeemReminder).length;
+          addLog(`   第一次进入: 订单卡片=${firstOrderCardCount}张, 提醒卡片=${firstReminderCount}张`);
+
+          setTimeout(() => {
+            addLog('步骤2：关闭助手');
+            closeAssistant();
+
+            setTimeout(() => {
+              addLog('步骤3：第二次进入同一订单A详情页');
+              openAssistant(ORDER_A, 'order_detail');
+
+              setTimeout(() => {
+                const secondOrderCardCount = messages.filter(m => m.orderCard).length;
+                const secondReminderCount = messages.filter(m => m.redeemReminder).length;
+                const passed =
+                  secondOrderCardCount === firstOrderCardCount &&
+                  secondOrderCardCount === 1 &&
+                  secondReminderCount === firstReminderCount &&
+                  secondReminderCount === 1;
+                const status = passed ? '✅' : '❌';
+                addLog(`${status} 有提醒同订单重复进入（不重复发送）`);
+                addLog(`   预期: 订单卡片=1张, 提醒卡片=1张（与第一次相同，不增加）`);
+                addLog(`   实际: 订单卡片=${secondOrderCardCount}张, 提醒卡片=${secondReminderCount}张`);
+              }, 300);
+            }, 300);
+          }, 200);
+        }, 300);
+      }, 200);
+    }, 200);
+  };
+
+  const runScenario9 = () => {
+    addLog('========== 🧪 场景9：气泡入口进入有使用提醒的订单 ==========');
+    addLog('规则：气泡入口进入，只发1条消息（订单卡片+使用提醒），不重复发送');
+    clearAllStorage();
+
+    setTimeout(() => {
+      setReminderForOrder(ORDER_A, 3);
+
+      setTimeout(() => {
+        addLog(`操作：从气泡入口进入有提醒的订单（${ORDER_A}）`);
+        openAssistant(ORDER_A, 'bubble');
+
+        setTimeout(() => {
+          const orderCardCount = messages.filter(m => m.orderCard).length;
+          const reminderCardCount = messages.filter(m => m.redeemReminder).length;
+          const passed = orderCardCount === 1 && reminderCardCount === 1;
+          const status = passed ? '✅' : '❌';
+          addLog(`${status} 气泡入口进入有提醒订单`);
+          addLog(`   预期: 订单卡片=1张, 提醒卡片=1张`);
+          addLog(`   实际: 订单卡片=${orderCardCount}张, 提醒卡片=${reminderCardCount}张`);
+          addLog(`   entrySource=${entrySource}`);
+        }, 300);
+      }, 200);
+    }, 200);
+  };
+
   const runAllScenarios = () => {
     addLog('🚀 开始运行全部场景...');
     let delay = 0;
@@ -339,6 +449,9 @@ const TestPanel: React.FC = () => {
       () => { closeAssistant(); setTimeout(runScenario4, 500); },
       () => { closeAssistant(); setTimeout(runScenario5, 500); },
       () => { closeAssistant(); setTimeout(runScenario6, 500); },
+      () => { closeAssistant(); setTimeout(runScenario7, 500); },
+      () => { closeAssistant(); setTimeout(runScenario8, 500); },
+      () => { closeAssistant(); setTimeout(runScenario9, 500); },
     ];
     scenarios.forEach((fn, i) => {
       setTimeout(fn, delay);
@@ -449,37 +562,73 @@ const TestPanel: React.FC = () => {
         </button>
       </div>
 
-      <div
-        style={{
-          padding: '12px',
-          borderBottom: '1px solid #e2e8f0',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '8px',
-        }}
-      >
-        <button onClick={runScenario1} style={btnStyle('#2563eb')}>
-          场景1: 订单中心重复进入
-        </button>
-        <button onClick={runScenario2} style={btnStyle('#7c3aed')}>
-          场景2: 详情→订单中心
-        </button>
-        <button onClick={runScenario3} style={btnStyle('#059669')}>
-          场景3: 订单中心→新详情
-        </button>
-        <button onClick={runScenario4} style={btnStyle('#d97706')}>
-          场景4: 同订单重复进入
-        </button>
-        <button onClick={runScenario5} style={btnStyle('#dc2626')}>
-          场景5: 订单A→订单B
-        </button>
-        <button onClick={runScenario6} style={btnStyle('#db2777')}>
-          场景6: A→B→A切回
-        </button>
-        <button onClick={runAllScenarios} style={{ ...btnStyle('#1e293b'), gridColumn: 'span 2' }}>
-          🚀 一键运行全部场景
-        </button>
-      </div>
+      {onOpenStatusFlowDemo && (
+        <div
+          style={{
+            padding: '12px',
+            borderBottom: '1px solid #e2e8f0',
+          }}
+        >
+          <button
+            onClick={onOpenStatusFlowDemo}
+            style={{
+              ...btnStyle('#ec4899'),
+              width: '100%',
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}
+          >
+            🔄 状态流转全景图 Demo
+          </button>
+        </div>
+      )}
+
+      {onOpenInteractionMap && (
+        <div
+          style={{
+            padding: '12px',
+            paddingTop: onOpenStatusFlowDemo ? '0' : '12px',
+            borderBottom: '1px solid #e2e8f0',
+          }}
+        >
+          <button
+            onClick={onOpenInteractionMap}
+            style={{
+              ...btnStyle('#8b5cf6'),
+              width: '100%',
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}
+          >
+            🗺️ AI 助手全景交互图
+          </button>
+        </div>
+      )}
+
+      {onOpenOrderCardDemo && (
+        <div
+          style={{
+            padding: '12px',
+            paddingTop: onOpenInteractionMap || onOpenStatusFlowDemo ? '0' : '12px',
+            borderBottom: '1px solid #e2e8f0',
+          }}
+        >
+          <button
+            onClick={onOpenOrderCardDemo}
+            style={{
+              ...btnStyle('#0ea5e9'),
+              width: '100%',
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}
+          >
+            🎴 团小帮 · 订单卡片 Demo
+          </button>
+        </div>
+      )}
 
       <div
         style={{

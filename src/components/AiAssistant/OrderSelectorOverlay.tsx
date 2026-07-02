@@ -32,6 +32,7 @@ const OrderSelectorOverlay: React.FC<OrderSelectorOverlayProps> = ({ isOpen, onC
   const filteredOrders = useMemo(() => {
     return ORDER_LIST.filter(order => {
       if (order.category === 'show') return false;
+      if (order.category === 'transport') return false;
       const text = order.statusText;
       if (filter === 'all') return true;
       if (filter === 'unpaid') return text === '待支付';

@@ -60,6 +60,12 @@ export const OrderCardActions: React.FC<OrderCardActionsProps> = ({ order, onAct
 
   const secondaryActions = order.actions.filter(a => a.type === 'secondary');
   const primaryActions = order.actions.filter(a => a.type === 'primary');
+  const totalButtons = secondaryActions.length + primaryActions.length;
+  const maxButtons = 3;
+  const visibleSecondaryCount = totalButtons > maxButtons
+    ? Math.max(0, maxButtons - primaryActions.length)
+    : secondaryActions.length;
+  const visibleSecondaryActions = secondaryActions.slice(secondaryActions.length - visibleSecondaryCount);
 
   return (
     <div className={`oc-card-actions ${hasPaymentCountdown ? 'with-countdown' : ''}`}>
@@ -70,7 +76,7 @@ export const OrderCardActions: React.FC<OrderCardActionsProps> = ({ order, onAct
         </div>
       )}
       <div className="oc-action-btns">
-        {secondaryActions.map((action, i) => (
+        {visibleSecondaryActions.map((action, i) => (
           <button
             key={`sec-${i}`}
             className={`oc-action-btn ${action.type}`}

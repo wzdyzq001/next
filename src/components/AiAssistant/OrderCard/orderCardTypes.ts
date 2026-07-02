@@ -47,6 +47,7 @@ export interface OrderCardData {
   actions: { label: string; type: 'primary' | 'secondary' }[];
   paymentCountdown?: string;
   suggestions: string[];
+  validDate?: string;
   voucherInfo?: {
     code: string;
     number: string;

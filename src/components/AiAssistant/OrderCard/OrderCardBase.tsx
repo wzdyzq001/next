@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { OrderCardData } from './orderCardTypes';
 import './orderCard.css';
 
@@ -6,7 +6,13 @@ interface OrderCardBaseProps {
   order: OrderCardData;
 }
 
+const isImageUrl = (str: string): boolean => {
+  return /^https?:\/\//i.test(str);
+};
+
 export const OrderCardBase: React.FC<OrderCardBaseProps> = ({ order }) => {
+  const [imgError, setImgError] = useState(false);
+
   const showStoreLine = !order.hideStoreLine &&
     order.storeName &&
     !order.extension?.hotelInfo &&
@@ -14,9 +20,28 @@ export const OrderCardBase: React.FC<OrderCardBaseProps> = ({ order }) => {
     order.extension?.type !== 'scenic_entry' &&
     order.extension?.type !== 'hotel_stay';
 
+  const renderThumbnail = () => {
+    if (!order.thumbnail) return null;
+
+    if (isImageUrl(order.thumbnail) && !imgError) {
+      return (
+        <img
+          src={order.thumbnail}
+          alt=""
+          className="oc-card-thumb-img"
+          onError={() => setImgError(true)}
+        />
+      );
+    }
+
+    return <span className="oc-card-thumb-emoji">{order.thumbnail}</span>;
+  };
+
   return (
     <div className="oc-card-base">
-      <div className="oc-card-thumb">{order.thumbnail}</div>
+      <div className="oc-card-thumb">
+        {renderThumbnail()}
+      </div>
       <div className="oc-card-info">
         <div className="oc-card-title-row">
           <div className="oc-card-title-main">
@@ -31,7 +56,9 @@ export const OrderCardBase: React.FC<OrderCardBaseProps> = ({ order }) => {
             </div>
           </div>
           <div className="oc-card-right">
-            <div className={`oc-card-status status-${order.statusColor}`}>
+            <div
+              className={`oc-card-status status-${order.statusColor}`}
+            >
               {order.statusText}
             </div>
             <div className="oc-card-price">
@@ -49,13 +76,13 @@ export const OrderCardBase: React.FC<OrderCardBaseProps> = ({ order }) => {
             <div className="oc-store-actions">
               {order.category !== 'travel_agency' && (
                 <button className="oc-store-icon-btn" title="导航">
-                  <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                  <svg viewBox="0 0 16 16" fill="none" preserveAspectRatio="xMidYMid meet">
                     <path d="M2.5 12L13.5 2.5L8.5 13.5L6.8 10.7L4 11.5L2.5 12Z" fill="#86909c"/>
                   </svg>
                 </button>
               )}
               <button className="oc-store-icon-btn" title="电话">
-                <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                <svg viewBox="0 0 16 16" fill="none" preserveAspectRatio="xMidYMid meet">
                   <path d="M3.5 2.5L5.5 2L7 5.5L5.5 6.5C6 7.5 7 8.5 8 9.5C9 10.5 10 11 11 11.5L12 10L15 11.5V14C15 14.5 14.5 15 14 15C6 15 1.5 10.5 1.5 3C1.5 2.5 2 2.5 2.5 2.5Z" fill="#86909c"/>
                 </svg>
               </button>

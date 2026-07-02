@@ -48,6 +48,8 @@ export const COLLAPSE_STATE_STORAGE_KEY = 'ai_assistant_collapse_state';
 
 export const LAST_ENTRY_STORAGE_KEY = 'ai_assistant_last_entry';
 
+export const STORAGE_KEY_RESERVATIONS = 'ai_assistant_reservations';
+
 export const COLLAPSE_VISIBLE_COUNT_ORDER_LIST_FROM_DETAIL = 1;
 
 export const COLLAPSE_VISIBLE_COUNT_ORDER_LIST_DEFAULT = 2;

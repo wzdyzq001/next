@@ -98,7 +98,6 @@ export function VoucherCodeSheet({
         aria-label="券码和券号"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="voucher-sheet-grabber" />
         <div className="voucher-sheet-head">
           <div>
             <span>VOUCHER · 券码</span>

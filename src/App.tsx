@@ -4,7 +4,17 @@ import type { OrderListItem } from './types';
 import type { ReservationInfoCardData } from './OrderCenter';
 import { AiAssistantProvider, useAiAssistantContext, AiAssistantOverlay } from './components/AiAssistant';
 import TestPanel from './components/TestPanel';
+import CardMarginDemo from './components/AiAssistant/CardMarginDemo';
+import WidthAlignmentDemo from './components/AiAssistant/WidthAlignmentDemo';
+import FeatureDemo from './FeatureDemo';
+import StatusFlowDemo from './StatusFlowDemo';
+import InteractionMap from './InteractionMap';
+import { AiOrderCardDemo } from './components/AiAssistant/AiOrderCardDemo';
 import './components/AiAssistant/aiAssistant.css';
+import './components/AiAssistant/cardMarginDemo.css';
+import './components/AiAssistant/widthAlignmentDemo.css';
+import './interactionMap.css';
+import './components/AiAssistant/orderCardDemo.css';
 
 const INITIAL_RESERVATIONS: Record<string, ReservationInfoCardData> = {
   'MT2026061800101': {
@@ -104,13 +114,18 @@ function AppContent({ reservationTrigger, onReservationTriggerConsumed }: {
         onReservationTriggerConsumed={onReservationTriggerConsumed}
       />
       <AiAssistantOverlay />
-      <TestPanel />
     </>
   );
 }
 
 function App() {
   const [reservationTrigger, setReservationTrigger] = useState<{ orderId: string; category: string; productType?: string } | null>(null);
+  const [showCardMarginDemo, setShowCardMarginDemo] = useState(false);
+  const [showWidthAlignmentDemo, setShowWidthAlignmentDemo] = useState(false);
+  const [showFeatureDemo, setShowFeatureDemo] = useState(false);
+  const [showStatusFlowDemo, setShowStatusFlowDemo] = useState(false);
+  const [showInteractionMap, setShowInteractionMap] = useState(false);
+  const [showOrderCardDemo, setShowOrderCardDemo] = useState(false);
 
   const handleOpenReservation = useCallback((orderId: string, category: string, productType?: string) => {
     setReservationTrigger({ orderId, category, productType });
@@ -119,6 +134,174 @@ function App() {
   const handleReservationTriggerConsumed = useCallback(() => {
     setReservationTrigger(null);
   }, []);
+
+  if (showWidthAlignmentDemo) {
+    return (
+      <>
+        <WidthAlignmentDemo />
+        <button
+          onClick={() => setShowWidthAlignmentDemo(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          ← 返回
+        </button>
+      </>
+    );
+  }
+
+  if (showCardMarginDemo) {
+    return (
+      <div className="app">
+        <CardMarginDemo />
+        <button
+          onClick={() => setShowCardMarginDemo(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          ← 返回
+        </button>
+      </div>
+    );
+  }
+
+  if (showStatusFlowDemo) {
+    return (
+      <>
+        <StatusFlowDemo />
+        <button
+          onClick={() => setShowStatusFlowDemo(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          📋 订单中心
+        </button>
+      </>
+    );
+  }
+
+  if (showInteractionMap) {
+    return (
+      <>
+        <InteractionMap />
+        <button
+          onClick={() => setShowInteractionMap(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          📋 订单中心
+        </button>
+      </>
+    );
+  }
+
+  if (showOrderCardDemo) {
+    return (
+      <AiAssistantProvider>
+        <AiOrderCardDemo />
+        <button
+          onClick={() => setShowOrderCardDemo(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          📋 订单中心
+        </button>
+      </AiAssistantProvider>
+    );
+  }
+
+  if (showFeatureDemo) {
+    return (
+      <>
+        <FeatureDemo />
+        <button
+          onClick={() => setShowFeatureDemo(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          📋 订单中心
+        </button>
+      </>
+    );
+  }
 
   return (
     <div className="app">
@@ -129,6 +312,11 @@ function App() {
         <AppContent
           reservationTrigger={reservationTrigger}
           onReservationTriggerConsumed={handleReservationTriggerConsumed}
+        />
+        <TestPanel
+          onOpenStatusFlowDemo={() => setShowStatusFlowDemo(true)}
+          onOpenInteractionMap={() => setShowInteractionMap(true)}
+          onOpenOrderCardDemo={() => setShowOrderCardDemo(true)}
         />
       </AiAssistantProvider>
     </div>

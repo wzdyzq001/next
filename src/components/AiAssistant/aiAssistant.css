@@ -1,9 +1,8 @@
 /* ============================================================
  * AI 助手全局宽度强制规则
  * 说明：此规则为全局强制规则，确保 AI 助手界面所有容器元素
- *       始终与订单中心/订单详情页的内容卡片宽度对齐，
- *       左右各保留 12px 间距，最大宽度为 var(--mobile-page-width) - 24px。
- *       不允许有任何例外和变更。
+ *       始终与订单中心/订单详情页的宽度保持一致，
+ *       最大宽度为 var(--mobile-page-width)。
  * ============================================================ */
 
 .ai-overlay-header,
@@ -52,8 +51,8 @@
 .reservation-drawer,
 .voucher-sheet {
   box-sizing: border-box !important;
-  width: calc(100% - 24px) !important;
-  max-width: calc(var(--mobile-page-width) - 24px) !important;
+  width: 100% !important;
+  max-width: var(--mobile-page-width) !important;
   min-width: 0 !important;
 }
 
@@ -223,6 +222,33 @@
   overflow: hidden;
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.1);
   will-change: height, transform;
+}
+
+.ai-assistant-toast {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 100;
+  animation: toastFadeIn 0.2s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .ai-overlay-grabber,
@@ -546,18 +572,25 @@
 }
 
 .ai-message-text {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
+  color: #6b7280;
 }
 
 .ai-message-order-card {
   width: 100%;
 }
 
+/* ============================================================
+ * 卡片消息气泡宽度 - 已固化为 90%
+ * 说明：此宽度参数为产品确认后的固化设置，
+ *       包含订单卡片、功能卡、预约卡、提醒卡等所有卡片消息。
+ * 注意：如需调整此宽度，必须先与产品负责人确认后方可修改。
+ *       不得随意修改此宽度参数。
+ * ============================================================ */
 .ai-message.assistant:has(.ai-message-order-card) .ai-message-bubble {
-  flex: 1;
-  width: auto;
-  max-width: calc(100% - 40px);
+  width: 90%;
+  max-width: 90%;
   padding: 0;
   background: transparent;
   border: none;
@@ -626,8 +659,13 @@
 }
 
 .ai-message-order-card .oc-store-icon-btn {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
+}
+
+.ai-message-order-card .oc-store-icon-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 .ai-message-order-card .oc-price-symbol {
@@ -724,13 +762,17 @@
   box-sizing: border-box;
 }
 
+.ai-message-order-card .oc-suggestions-row {
+  gap: 8px;
+}
+
+.ai-message-order-card .oc-suggestions-label {
+  font-size: 11px;
+}
+
 .ai-message-order-card .oc-suggestions-list {
   gap: 6px;
   padding-bottom: 3px;
-  padding-left: 0;
-  padding-right: 0;
-  margin-left: 0;
-  margin-right: 0;
 }
 
 .ai-message-order-card .oc-suggestion-btn {
@@ -2034,6 +2076,17 @@
   color: var(--ink-mute);
 }
 
+.time-slot.past {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.time-slot.past .time,
+.time-slot.past .status {
+  color: var(--ink-mute);
+  text-decoration: line-through;
+}
+
 .reserve-row {
   display: flex;
   align-items: center;
@@ -2733,7 +2786,7 @@
 .ai-message.assistant:has(.ai-message-reservation-card) .ai-message-text {
   color: #ff6b6b;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   margin-bottom: 8px;
 }
 
@@ -2745,8 +2798,8 @@
 .ai-message.assistant:has(.ai-message-feature-card) .ai-message-bubble,
 .ai-message.assistant:has(.ai-message-reservation-card) .ai-message-bubble,
 .ai-message.assistant:has(.ai-message-reminder-card) .ai-message-bubble {
-  width: 92%;
-  max-width: 92%;
+  width: 90%;
+  max-width: 90%;
   padding: 0;
   background: transparent;
   border: none;
@@ -3191,12 +3244,21 @@
   overflow: hidden;
   flex-shrink: 0;
   background: #f5f6f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .reorder-product-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.reorder-thumb-emoji {
+  font-size: 32px;
+  line-height: 1;
+  user-select: none;
 }
 
 .reorder-product-info {

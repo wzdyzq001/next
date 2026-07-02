@@ -1,0 +1,964 @@
+.imap-container {
+  width: 100%;
+  min-height: 100vh;
+  background: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  color: #1e293b;
+}
+
+.imap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.imap-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.imap-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.imap-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.imap-header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.imap-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #475569;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.imap-stat:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.imap-stat-icon {
+  font-size: 16px;
+}
+
+.imap-stat-count {
+  font-weight: 700;
+  color: #0f172a;
+  background: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.imap-body {
+  display: flex;
+  height: calc(100vh - 84px);
+}
+
+.imap-sidebar {
+  width: 280px;
+  background: white;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.imap-sidebar-header {
+  padding: 16px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #f1f5f9;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.imap-module-list {
+  padding: 8px 0;
+}
+
+.imap-module {
+  margin-bottom: 4px;
+}
+
+.imap-module-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.imap-module-header:hover {
+  background: #f8fafc;
+}
+
+.imap-module-header.active {
+  background: #f8fafc;
+}
+
+.imap-module-icon {
+  font-size: 18px;
+}
+
+.imap-module-name {
+  flex: 1;
+}
+
+.imap-module-count {
+  font-size: 12px;
+  color: #94a3b8;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.imap-module-arrow {
+  font-size: 10px;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.imap-module-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.imap-scene-list {
+  padding: 4px 0;
+  background: #fafbfc;
+}
+
+.imap-scene-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 42px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13px;
+  border-left: 3px solid transparent;
+}
+
+.imap-scene-item:hover {
+  background: #f1f5f9;
+}
+
+.imap-scene-item.active {
+  background: #eff6ff;
+  border-left-color: #3b82f6;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.imap-scene-index {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.7;
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.imap-scene-title {
+  flex: 1;
+}
+
+.imap-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 36px;
+}
+
+.imap-preview-header {
+  margin-bottom: 24px;
+}
+
+.imap-scene-module-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.imap-scene-title-large {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #0f172a;
+}
+
+.imap-scene-desc {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.imap-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.imap-info-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.imap-info-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 12px;
+}
+
+.imap-info-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #334155;
+  line-height: 2;
+}
+
+.imap-logic-text {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.8;
+}
+
+.imap-chat-preview {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.imap-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.imap-chat-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.imap-chat-steps {
+  font-size: 12px;
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.imap-chat-body {
+  padding: 20px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.imap-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.imap-step.user {
+  flex-direction: row-reverse;
+}
+
+.imap-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.imap-avatar.user {
+  background: #dbeafe;
+}
+
+.imap-bubble {
+  max-width: 70%;
+  background: white;
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1e293b;
+}
+
+.imap-bubble-container {
+  max-width: 85%;
+}
+
+.imap-order-card-wrapper {
+  width: 360px;
+  max-width: 100%;
+}
+
+.imap-reservation-wrapper {
+  width: 360px;
+  max-width: 100%;
+}
+
+.imap-reminder-wrapper {
+  width: 360px;
+  max-width: 100%;
+}
+
+.imap-feature-card-wrapper {
+  width: 360px;
+  max-width: 100%;
+}
+
+.imap-extension-only-wrapper {
+  width: 360px;
+  max-width: 100%;
+  background: white;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: none;
+  box-sizing: border-box;
+}
+
+.imap-extension-only-wrapper .oc-card-extension {
+  margin: 0;
+  padding: 0;
+  border-top: none;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* 订单列表 */
+.imap-order-list-wrapper {
+  width: 360px;
+  max-width: 100%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.imap-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.imap-order-list-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.imap-order-list-item:last-child {
+  border-bottom: none;
+}
+
+.imap-order-list-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.imap-order-list-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imap-order-list-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imap-order-list-thumb-emoji {
+  font-size: 28px;
+  line-height: 1;
+  user-select: none;
+}
+
+.imap-order-list-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.imap-order-list-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.imap-order-list-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.imap-order-list-status {
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.imap-order-list-status.status-green {
+  color: #059669;
+}
+
+.imap-order-list-status.status-orange {
+  color: #EF4444;
+}
+
+.imap-order-list-status.status-blue {
+  color: #2563EB;
+}
+
+.imap-order-list-status.status-gray {
+  color: #6B7280;
+}
+
+.imap-order-list-status.status-red {
+  color: #EF4444;
+}
+
+.imap-order-list-store {
+  font-size: 12px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imap-order-list-code-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.imap-order-list-code {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ff7d00;
+  letter-spacing: 2px;
+}
+
+.imap-order-list-price {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+}
+
+.imap-order-list-progress {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.imap-order-list-progress .oc-card-extension {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.imap-view-all-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
+  color: #3b82f6;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.imap-view-all-btn:hover {
+  background: #f1f5f9;
+}
+
+/* 订单列表浮层 */
+.imap-order-sheet-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.imap-order-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  background: #f8fafc;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.imap-order-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+.imap-order-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.imap-order-sheet-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.imap-order-sheet-count {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.imap-order-sheet-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.imap-order-sheet-item {
+  width: 100%;
+}
+
+.imap-step-text p {
+  margin: 0;
+}
+
+.imap-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.imap-step.user .imap-quick-replies {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.imap-quick-reply {
+  padding: 6px 14px;
+  background: #f1f5f9;
+  color: #3b82f6;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.imap-quick-reply:hover {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+.imap-order-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.imap-order-card-header {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+}
+
+.imap-order-img {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.imap-order-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.imap-order-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.imap-order-store {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.imap-order-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.imap-status-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.imap-order-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.imap-order-card-footer {
+  padding: 10px 14px;
+  background: #fef9c3;
+  border-top: 1px solid #fef08a;
+  font-size: 12px;
+}
+
+.imap-order-hint {
+  color: #a16207;
+  font-weight: 500;
+}
+
+.imap-reservation-card,
+.imap-reminder-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 280px;
+}
+
+.imap-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  color: #0369a1;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.imap-reminder-card .imap-card-title {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #b45309;
+  border-bottom-color: #fcd34d;
+}
+
+.imap-card-icon {
+  font-size: 18px;
+}
+
+.imap-card-body {
+  padding: 14px 16px;
+}
+
+.imap-card-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.imap-card-label {
+  color: #64748b;
+}
+
+.imap-card-value {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.imap-highlight {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.imap-card-footer {
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+
+.imap-card-status.pending {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.imap-card-status.success {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.imap-pickup-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 260px;
+}
+
+.imap-pickup-header {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  padding: 16px;
+  text-align: center;
+}
+
+.imap-pickup-label {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.imap-pickup-code {
+  font-size: 32px;
+  font-weight: 800;
+  color: #047857;
+  letter-spacing: 2px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.imap-pickup-divider {
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    #d1fae5,
+    #d1fae5 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+.imap-pickup-info {
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.imap-pickup-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.imap-pickup-store {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.imap-pickup-status {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.imap-delivery-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 280px;
+}
+
+.imap-delivery-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.imap-delivery-icon {
+  font-size: 36px;
+}
+
+.imap-delivery-info {
+  flex: 1;
+}
+
+.imap-delivery-status {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.imap-delivery-eta {
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.imap-delivery-progress {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.imap-delivery-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.imap-delivery-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.imap-delivery-rider {
+  color: #475569;
+  font-weight: 500;
+}
+
+.imap-delivery-note {
+  color: #64748b;
+}
+
+@media (max-width: 1024px) {
+  .imap-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .imap-sidebar {
+    width: 240px;
+  }
+  
+  .imap-header-right {
+    display: none;
+  }
+}

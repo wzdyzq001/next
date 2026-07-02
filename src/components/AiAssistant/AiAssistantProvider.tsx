@@ -26,6 +26,7 @@ import {
   CHAT_HISTORY_MAX_AGE,
   COLLAPSE_STATE_STORAGE_KEY,
   LAST_ENTRY_STORAGE_KEY,
+  STORAGE_KEY_RESERVATIONS,
   COLLAPSE_VISIBLE_COUNT_ORDER_LIST_FROM_DETAIL,
   COLLAPSE_VISIBLE_COUNT_ORDER_LIST_DEFAULT,
   COLLAPSE_VISIBLE_COUNT_NEW_ORDER,
@@ -39,6 +40,8 @@ import {
   getReminderByOrder,
 } from '../../redeemReminder';
 import type { OrderListItem } from '../../types';
+import { createReorderFromOriginal } from './OrderCard/orderCardUtils';
+import type { OrderCardData } from './OrderCard/orderCardTypes';
 const AiAssistantContext = createContext<AiAssistantContextValue | null>(null);
 
 export const useAiAssistantContext = () => {
@@ -164,6 +167,18 @@ export const AiAssistantProvider: React.FC<{
   initialReservations?: Record<string, ReservationInfoCardData>;
   onOpenReservation?: (orderId: string, category: string, productType?: string) => void;
 }> = ({ children, initialReservations = {}, onOpenReservation }) => {
+  const loadSavedReservations = (): Record<string, ReservationInfoCardData> => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_RESERVATIONS);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error('Failed to load reservations:', e);
+    }
+    return initialReservations;
+  };
+
   const [overlayMode, setOverlayMode] = useState<OverlayMode>('closed');
   const [entrySource, setEntrySource] = useState<EntrySource>('order_list');
   const [currentOrderId, setCurrentOrderId] = useState<string | undefined>();
@@ -192,7 +207,10 @@ export const AiAssistantProvider: React.FC<{
   const [voucherSheetStoreName, setVoucherSheetStoreName] = useState<string | undefined>(undefined);
   const [voucherSheetProductName, setVoucherSheetProductName] = useState<string | undefined>(undefined);
   const [voucherSheetVoucherCode, setVoucherSheetVoucherCode] = useState<string | undefined>(undefined);
-  const [reservationsByOrder, setReservationsByOrder] = useState<Record<string, ReservationInfoCardData>>(initialReservations);
+  const [reservationsByOrder, setReservationsByOrder] = useState<Record<string, ReservationInfoCardData>>(loadSavedReservations);
+  const [toastText, setToastText] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reservationTimersRef = useRef<Record<string, { simulate: ReturnType<typeof setTimeout>; timeout: ReturnType<typeof setTimeout> }>>({});
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
   const [collapsedCount, setCollapsedCount] = useState(0);
   const [visibleCount, setVisibleCount] = useState(2);
@@ -256,14 +274,250 @@ export const AiAssistantProvider: React.FC<{
     return null;
   }, [currentOrderId, reservationsByOrder]);
 
+  const showToast = useCallback((text: string) => {
+    setToastText(text);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setToastText(null);
+      toastTimerRef.current = null;
+    }, 2000);
+  }, []);
+
   const showExistingReservationAlert = useCallback((reservation: ReservationInfoCardData) => {
+    const orderId = reservation.orderId;
+    const latestReservationMsg = messages.reduceRight<ChatMessage | null>((found, msg) => {
+      if (found) return found;
+      if (msg.reservationInfo && msg.reservationInfo.orderId === orderId) {
+        return msg;
+      }
+      return null;
+    }, null);
+    if (latestReservationMsg) {
+      const isPending = reservation.acceptStatus === 'pending';
+      const toastMsg = isPending ? '已经有进行中的预约单' : '已经有预约成功的订单';
+      showToast(toastMsg);
+      return;
+    }
     const isPending = reservation.acceptStatus === 'pending';
     const alertText = isPending ? '已经有预约进行中' : '已经有预约成功';
     addAssistantMessage(alertText, { reservationInfo: reservation });
-  }, [addAssistantMessage]);
+  }, [addAssistantMessage, messages, showToast]);
+
+  const clearChatHistory = useCallback(() => {
+    setMessages([]);
+    contextRef.current = createEmptyContext();
+    sessionIdRef.current = null;
+    setIsHistoryCollapsed(false);
+    setCollapsedCount(0);
+    setVisibleCount(0);
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_CHAT_HISTORY);
+      if (raw) {
+        const allHistory = JSON.parse(raw);
+        delete allHistory['default'];
+        localStorage.setItem(STORAGE_KEY_CHAT_HISTORY, JSON.stringify(allHistory));
+      }
+    } catch (e) {
+      console.error('Failed to clear chat history:', e);
+    }
+  }, []);
 
   const updateMessageById = useCallback((id: string, updates: Partial<ChatMessage>) => {
     setMessages((prev) => prev.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg)));
+  }, []);
+
+  const updateOrderCardInMessage = useCallback((messageId: string, order: any) => {
+    const orderCard = convertOrderDataToCardData(order);
+    updateMessageById(messageId, { orderCard });
+  }, [updateMessageById]);
+
+  const findOrderCardMessage = useCallback((orderId: string): ChatMessage | null => {
+    return messages.find(m => m.orderCard && (m.orderCard.id === orderId || (m.orderCard as any).orderId === orderId)) || null;
+  }, [messages]);
+
+  const placeOrder = useCallback(async (orderId: string) => {
+    const msg = findOrderCardMessage(orderId);
+    if (!msg?.orderCard) return;
+
+    addAssistantMessage('好的，正在为您提交点单申请，请稍候...');
+
+    await new Promise(resolve => setTimeout(resolve, 1200));
+
+    const updatedOrder = {
+      orderId,
+      channel: 'douyin',
+      status: 'confirmed',
+      redeemMethod: 'self_order',
+      supportedRedeemMethods: ['self_order', 'delivery'],
+      category: 'food',
+      store: msg.orderCard.storeName,
+      storeName: msg.orderCard.storeName,
+      itemSummary: msg.orderCard.productName,
+      totalAmount: msg.orderCard.price * 100,
+      productImage: msg.orderCard.thumbnail,
+      tags: msg.orderCard.tags,
+      distance: msg.orderCard.distance,
+      progress: [
+        { label: '提交订单', state: 'done' },
+        { label: '商家接单', state: 'done' },
+        { label: '备餐中', state: 'active' },
+      ],
+    };
+
+    updateOrderCardInMessage(msg.id, updatedOrder);
+    addAssistantMessage('✅ 商家已接单，正在为您备餐，请耐心等待~');
+  }, [findOrderCardMessage, updateOrderCardInMessage, addAssistantMessage]);
+
+  const startDelivery = useCallback(async (orderId: string) => {
+    const msg = findOrderCardMessage(orderId);
+    if (!msg?.orderCard) return;
+
+    addAssistantMessage('好的，正在为您安排配送，请稍候...');
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const confirmedOrder: any = {
+      orderId,
+      channel: 'douyin',
+      status: 'confirmed',
+      redeemMethod: 'delivery',
+      supportedRedeemMethods: ['self_order', 'delivery'],
+      category: 'food',
+      store: msg.orderCard.storeName,
+      storeName: msg.orderCard.storeName,
+      itemSummary: msg.orderCard.productName,
+      totalAmount: msg.orderCard.price * 100,
+      productImage: msg.orderCard.thumbnail,
+      tags: msg.orderCard.tags,
+      distance: msg.orderCard.distance,
+      estimatedArrival: '约30分钟',
+    };
+    updateOrderCardInMessage(msg.id, confirmedOrder);
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const deliveryOrder: any = {
+      ...confirmedOrder,
+      status: 'in_delivery',
+      riderName: '张师傅',
+      estimatedArrival: '约20分钟',
+      deliveryProgress: [
+        { label: '订单提交', state: 'done' },
+        { label: '商家接单', state: 'done' },
+        { label: '骑手取餐', state: 'done' },
+        { label: '配送中', state: 'active' },
+        { label: '已送达', state: 'pending' },
+      ],
+    };
+    updateOrderCardInMessage(msg.id, deliveryOrder);
+    addAssistantMessage('🛵 骑手已取餐，正在飞速赶往您的位置，预计20分钟送达~');
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const completedOrder: any = {
+      ...deliveryOrder,
+      status: 'completed',
+      deliveryProgress: [
+        { label: '订单提交', state: 'done' },
+        { label: '商家接单', state: 'done' },
+        { label: '骑手取餐', state: 'done' },
+        { label: '配送中', state: 'done' },
+        { label: '已送达', state: 'done' },
+      ],
+    };
+    updateOrderCardInMessage(msg.id, completedOrder);
+    addAssistantMessage('🎉 订单已送达！请您享用美食，期待您的好评~');
+  }, [findOrderCardMessage, updateOrderCardInMessage, addAssistantMessage]);
+
+  const submitFeatureCard = useCallback(async (cardType: string, data: Record<string, unknown>) => {
+    console.log('submitFeatureCard:', cardType, data);
+
+    switch (cardType) {
+      case 'redeem_reminder':
+        addAssistantMessage('好的，使用提醒已设置，我会在指定时间提醒您。');
+        break;
+      case 'reservation_form':
+        addAssistantMessage('预约申请已提交，商家确认后会第一时间通知您。');
+        break;
+      case 'urgent_request':
+        addAssistantMessage('加急请求已提交，我们会尽快为您处理，请保持电话畅通。');
+        break;
+      case 'reorder': {
+        const newOrder = data.newOrder as OrderCardData;
+        const originalOrder = data.originalOrder as OrderCardData;
+
+        addAssistantMessage('好的，正在为您重新下单，请稍候...');
+
+        if (newOrder) {
+          contextRef.current.currentOrderId = newOrder.id;
+          setCurrentOrderId(newOrder.id);
+          contextRef.current.orderContext = {
+            category: newOrder.category,
+            productType: newOrder.productType,
+            status: newOrder.orderStatus,
+            refundStage: 'none',
+          };
+
+          addAssistantMessage('', { orderCard: newOrder });
+
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const confirmedOrder = {
+            ...newOrder,
+            orderStatus: 'preparing' as const,
+            orderStatusLabel: '备餐中',
+            statusText: '备餐中 · 约15分钟',
+            statusColor: '#f59e0b',
+            extension: {
+              type: 'pickup_code' as const,
+              title: '取餐码',
+              pickupCode: 'A' + Math.floor(1000 + Math.random() * 9000),
+              steps: [
+                { label: '提交订单', state: 'done' as const },
+                { label: '商家接单', state: 'done' as const },
+                { label: '备餐中', state: 'active' as const },
+                { label: '待取餐', state: 'pending' as const },
+              ],
+            },
+          };
+
+          const lastOrderMsg = messages.reduceRight<ChatMessage | null>((found, msg) => {
+            if (found) return found;
+            if (msg.orderCard && msg.orderCard.id === newOrder.id) return msg;
+            return null;
+          }, null);
+
+          if (lastOrderMsg) {
+            updateOrderCardInMessage(lastOrderMsg.id, confirmedOrder);
+          }
+
+          addAssistantMessage('✅ 商家已接单，正在为您备餐，请耐心等待~');
+        } else if (originalOrder) {
+          const clonedOrder = createReorderFromOriginal(originalOrder);
+          contextRef.current.currentOrderId = clonedOrder.id;
+          setCurrentOrderId(clonedOrder.id);
+          contextRef.current.orderContext = {
+            category: clonedOrder.category,
+            productType: clonedOrder.productType,
+            status: clonedOrder.orderStatus,
+            refundStage: 'none',
+          };
+          addAssistantMessage('', { orderCard: clonedOrder });
+        }
+        break;
+      }
+      case 'refund_apply':
+        addAssistantMessage('退款申请已提交，预计1-3个工作日内处理完成，退款将原路返回。');
+        break;
+      default:
+        addAssistantMessage('操作成功');
+    }
+  }, [addAssistantMessage, updateOrderCardInMessage, messages]);
+
+  const cancelFeatureCard = useCallback(() => {
+    console.log('cancelFeatureCard');
   }, []);
 
   const sendMessage = useCallback(
@@ -393,38 +647,29 @@ export const AiAssistantProvider: React.FC<{
           ? convertOrderDataToCardData(currentOrder)
           : convertOrderListItemToCardData(currentOrderListItem!);
 
-        if (source === 'order_detail') {
-          const lastOrderCardOrderId = findLastOrderCardOrderId(initialMessages);
-          const currentOrderCardId = orderCard.id || (orderCard as any).orderId;
-          if (lastOrderCardOrderId !== currentOrderCardId) {
+        if (source === 'order_detail' || source === 'bubble') {
+          const reminder = getReminderByOrder(orderId);
+          const hasActiveReminder = reminder && reminder.status === 'active';
+
+          const hasOrderCard = initialMessages.some((msg) => {
+            const msgOrderId = msg.orderCard?.id || (msg.orderCard as any)?.orderId;
+            return msg.orderCard && msgOrderId === orderId;
+          });
+
+          if (!hasOrderCard) {
             isNewOrderCard = true;
             newOrderCardMessageIndex = initialMessages.length;
-            const orderCardMessage: ChatMessage = {
+
+            const cardMessage: ChatMessage = {
               id: genId(),
               role: 'assistant',
               contentType: 'text',
               content: '',
               orderCard,
+              ...(hasActiveReminder ? { redeemReminder: reminder } : {}),
               timestamp: Date.now(),
             };
-            initialMessages.push(orderCardMessage);
-          }
-        }
-
-        const reminder = getReminderByOrder(orderId);
-        if (reminder && reminder.status === 'active') {
-          const hasReminderCard = hasReminderCardInLastN(initialMessages, orderId, 3);
-          if (!hasReminderCard) {
-            const reminderMessage: ChatMessage = {
-              id: genId(),
-              role: 'assistant',
-              contentType: 'text',
-              content: '已为您设置使用提醒',
-              redeemReminder: reminder,
-              orderCard,
-              timestamp: Date.now(),
-            };
-            initialMessages.push(reminderMessage);
+            initialMessages.push(cardMessage);
           }
         }
       }
@@ -481,7 +726,108 @@ export const AiAssistantProvider: React.FC<{
       setIsHistoryCollapsed(initialCollapsed);
       setCollapsedCount(initialCollapsedCount);
       setVisibleCount(initialVisibleCount);
-      setMessages(initialMessages);
+
+      const savedReservations = loadSavedReservations();
+      const allReservations: Record<string, ReservationInfoCardData> = { ...savedReservations };
+
+      const updatedMessages = initialMessages.map((msg) => {
+        if (msg.reservationInfo && msg.reservationInfo.orderId) {
+          const orderId = msg.reservationInfo.orderId;
+          if (savedReservations[orderId]) {
+            return {
+              ...msg,
+              reservationInfo: savedReservations[orderId],
+            };
+          }
+        }
+        return msg;
+      });
+
+      updatedMessages.forEach((msg) => {
+        if (msg.reservationInfo && msg.reservationInfo.orderId) {
+          const orderId = msg.reservationInfo.orderId;
+          if (!allReservations[orderId]) {
+            allReservations[orderId] = msg.reservationInfo;
+          }
+        }
+      });
+
+      const now = Date.now();
+      const timedOutReservations: Array<{ orderId: string; reservation: ReservationInfoCardData; messageId: string }> = [];
+      const pendingReservations: Array<{ orderId: string; reservation: ReservationInfoCardData; messageId: string }> = [];
+
+      updatedMessages.forEach((msg) => {
+        if (msg.reservationInfo && msg.reservationInfo.orderId && msg.reservationInfo.acceptStatus === 'pending') {
+          const orderId = msg.reservationInfo.orderId;
+          const reservation = allReservations[orderId] || msg.reservationInfo;
+          if (reservation.acceptDeadlineAt && reservation.acceptDeadlineAt <= now) {
+            timedOutReservations.push({ orderId, reservation, messageId: msg.id });
+          } else {
+            pendingReservations.push({ orderId, reservation, messageId: msg.id });
+          }
+        }
+      });
+
+      let finalMessages = updatedMessages;
+      const updatedReservations: Record<string, ReservationInfoCardData> = { ...allReservations };
+
+      if (timedOutReservations.length > 0) {
+        finalMessages = updatedMessages.map((msg) => {
+          const timedOut = timedOutReservations.find(t => t.messageId === msg.id);
+          if (timedOut) {
+            const updated = {
+              ...timedOut.reservation,
+              acceptStatus: 'failed' as const,
+              failReason: 'timeout' as const,
+            };
+            updatedReservations[timedOut.orderId] = updated;
+            return {
+              ...msg,
+              content: '预约超时，商家未接单',
+              reservationInfo: updated,
+            };
+          }
+          return msg;
+        });
+      }
+
+      setMessages(finalMessages);
+      setReservationsByOrder(updatedReservations);
+
+      pendingReservations.forEach(({ orderId, reservation, messageId }) => {
+        const timeoutDelay = Math.max(0, (reservation.acceptDeadlineAt || 0) - now);
+        const responseDelay = 3000 + Math.random() * 5000;
+        const simulateDelay = Math.min(responseDelay, timeoutDelay - 500);
+        if (simulateDelay > 0) {
+          const simulateTimer = setTimeout(() => {
+            const random = Math.random();
+            if (random < 0.6) {
+              updateReservationStatus(messageId, reservation, 'accepted');
+            } else if (random < 0.85) {
+              updateReservationStatus(messageId, reservation, 'failed', 'rejected');
+            }
+          }, simulateDelay);
+          const timeoutTimer = setTimeout(() => {
+            clearTimeout(simulateTimer);
+            updateReservationStatus(messageId, reservation, 'failed', 'timeout');
+          }, timeoutDelay);
+          reservationTimersRef.current[orderId] = { simulate: simulateTimer, timeout: timeoutTimer };
+        }
+      });
+
+      const reservationsFromHistory: Record<string, ReservationInfoCardData> = {};
+      finalMessages.forEach((msg) => {
+        if (msg.reservationInfo && msg.reservationInfo.orderId) {
+          const orderId = msg.reservationInfo.orderId;
+          if (!savedReservations[orderId]) {
+            reservationsFromHistory[orderId] = msg.reservationInfo;
+          }
+        }
+      });
+      if (Object.keys(reservationsFromHistory).length > 0) {
+        setReservationsByOrder((prev) => ({ ...prev, ...reservationsFromHistory }));
+      }
+
       contextRef.current.lastActiveAt = Date.now();
 
       if (source === 'order_detail' && orderId) {
@@ -584,6 +930,13 @@ export const AiAssistantProvider: React.FC<{
   }, []);
 
   const executeAction = useCallback((action: MessageAction) => {
+    const findCurrentOrderCard = (): OrderCardData | null => {
+      const targetOrderId = (action as any).orderId || currentOrderId;
+      if (!targetOrderId) return null;
+      const msg = messages.find(m => m.orderCard && m.orderCard.id === targetOrderId);
+      return msg?.orderCard || null;
+    };
+
     switch (action.kind) {
       case 'set_redeem_reminder':
         closeAllSheets();
@@ -598,9 +951,7 @@ export const AiAssistantProvider: React.FC<{
         }
         const existing = orderId ? reservationsByOrder[orderId] : null;
         if (existing && (existing.acceptStatus === 'pending' || existing.acceptStatus === 'accepted')) {
-          const isPending = existing.acceptStatus === 'pending';
-          const alertText = isPending ? '已经有预约进行中' : '已经有预约成功';
-          addAssistantMessage(alertText, { reservationInfo: existing });
+          showExistingReservationAlert(existing);
           return;
         }
         closeAllSheets();
@@ -640,14 +991,16 @@ export const AiAssistantProvider: React.FC<{
             },
           };
         } else if (label.includes('再来一单')) {
+          const currentOrder = findCurrentOrderCard();
           featureCardData = {
             type: 'reorder',
             title: '再来一单',
             reorder: {
-              productName: '招牌奶茶套餐',
-              storeName: '茶百道(科技园店)',
-              price: 28.8,
-              thumbnail: 'https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=bubble%20tea%20drink%20product%20photo&image_size=square',
+              productName: currentOrder?.productName || '招牌奶茶套餐',
+              storeName: currentOrder?.storeName || '茶百道(科技园店)',
+              price: currentOrder?.price || 28.8,
+              thumbnail: currentOrder?.thumbnail || 'https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=bubble%20tea%20drink%20product%20photo&image_size=square',
+              orderData: currentOrder || undefined,
             },
           };
         } else if (label.includes('入住指引') || label.includes('一站式游玩攻略') || label.includes('出行指引')) {
@@ -717,7 +1070,7 @@ export const AiAssistantProvider: React.FC<{
 
         console.log('executeAction:', action);
     }
-  }, [addAssistantMessage, closeAllSheets]);
+  }, [addAssistantMessage, closeAllSheets, currentOrderId, messages, reservationsByOrder, showExistingReservationAlert, setCurrentOrderId]);
 
   const openReminderSheet = useCallback((orderId: string, productName?: string, validDate?: string) => {
     closeAllSheets();
@@ -746,7 +1099,7 @@ export const AiAssistantProvider: React.FC<{
     } else {
       const orderCardMsg = messages.find((m) => m.orderCard && m.orderCard.id === reminder.orderId);
       const orderCard = orderCardMsg?.orderCard;
-      addAssistantMessage('已为您设置使用提醒', { redeemReminder: reminder, orderCard });
+      addAssistantMessage('', { redeemReminder: reminder, orderCard });
     }
 
     setReminderEditMode('new');
@@ -768,6 +1121,15 @@ export const AiAssistantProvider: React.FC<{
     setReservationEditMode('new');
     setEditingReservation(null);
     setRebookFromMessageId(null);
+  }, []);
+
+  const clearReservationTimers = useCallback((orderId: string) => {
+    const timers = reservationTimersRef.current[orderId];
+    if (timers) {
+      clearTimeout(timers.simulate);
+      clearTimeout(timers.timeout);
+      delete reservationTimersRef.current[orderId];
+    }
   }, []);
 
   const updateReservationStatus = useCallback((
@@ -800,9 +1162,13 @@ export const AiAssistantProvider: React.FC<{
         ...prev,
         [orderId]: updatedReservation,
       }));
+      clearReservationTimers(orderId);
+      if (newStatus === 'failed' && failReason === 'timeout') {
+        showToast('预约超时，商家未接单');
+      }
     }
     return updatedReservation;
-  }, [updateMessageById]);
+  }, [updateMessageById, clearReservationTimers, showToast]);
 
   const confirmReservation = useCallback((data: ReservationInfoCardData) => {
     console.log('Reservation confirmed:', data);
@@ -825,10 +1191,31 @@ export const AiAssistantProvider: React.FC<{
       });
       targetMessageId = rebookFromMessageId;
     } else {
-      const msg = addAssistantMessage('已为您提交预约申请', {
-        reservationInfo: newReservationInfo,
-      });
-      targetMessageId = msg.id;
+      let existingMsgId: string | null = null;
+      if (currentOrderId) {
+        const existingMsg = messages.reduceRight<ChatMessage | null>((found, msg) => {
+          if (found) return found;
+          if (msg.reservationInfo && msg.reservationInfo.orderId === currentOrderId) {
+            return msg;
+          }
+          return null;
+        }, null);
+        if (existingMsg) {
+          existingMsgId = existingMsg.id;
+        }
+      }
+      if (existingMsgId) {
+        updateMessageById(existingMsgId, {
+          content: '已为您重新提交预约申请',
+          reservationInfo: newReservationInfo,
+        });
+        targetMessageId = existingMsgId;
+      } else {
+        const msg = addAssistantMessage('已为您提交预约申请', {
+          reservationInfo: newReservationInfo,
+        });
+        targetMessageId = msg.id;
+      }
     }
     if (currentOrderId) {
       setReservationsByOrder((prev) => ({
@@ -840,10 +1227,11 @@ export const AiAssistantProvider: React.FC<{
     setEditingReservation(null);
     setRebookFromMessageId(null);
 
-    if (targetMessageId) {
+    if (targetMessageId && currentOrderId) {
+      clearReservationTimers(currentOrderId);
       const responseDelay = 3000 + Math.random() * 5000;
       const timeoutDelay = Math.max(0, (newReservationInfo.acceptDeadlineAt || 0) - Date.now());
-      const timer = setTimeout(() => {
+      const simulateTimer = setTimeout(() => {
         const random = Math.random();
         if (random < 0.6) {
           updateReservationStatus(targetMessageId!, newReservationInfo, 'accepted');
@@ -852,15 +1240,12 @@ export const AiAssistantProvider: React.FC<{
         }
       }, Math.min(responseDelay, timeoutDelay - 500));
       const timeoutTimer = setTimeout(() => {
-        clearTimeout(timer);
+        clearTimeout(simulateTimer);
         updateReservationStatus(targetMessageId!, newReservationInfo, 'failed', 'timeout');
       }, timeoutDelay);
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(timeoutTimer);
-      };
+      reservationTimersRef.current[currentOrderId] = { simulate: simulateTimer, timeout: timeoutTimer };
     }
-  }, [addAssistantMessage, updateMessageById, updateReservationStatus, reservationEditMode, rebookFromMessageId, currentOrderId]);
+  }, [addAssistantMessage, updateMessageById, updateReservationStatus, reservationEditMode, rebookFromMessageId, currentOrderId, messages, clearReservationTimers]);
 
   const cancelReservation = useCallback((messageId: string, reservation: ReservationInfoCardData) => {
     console.log('Cancel reservation:', reservation);
@@ -877,13 +1262,15 @@ export const AiAssistantProvider: React.FC<{
         ...prev,
         [currentOrderId]: { ...canceledReservation, orderId: currentOrderId },
       }));
+      clearReservationTimers(currentOrderId);
     } else if (reservation.orderId) {
       setReservationsByOrder((prev) => ({
         ...prev,
         [reservation.orderId]: { ...canceledReservation, orderId: reservation.orderId },
       }));
+      clearReservationTimers(reservation.orderId);
     }
-  }, [updateMessageById, currentOrderId]);
+  }, [updateMessageById, currentOrderId, clearReservationTimers]);
 
   const rebookReservation = useCallback((messageId: string, reservation: ReservationInfoCardData) => {
     console.log('Rebook reservation:', reservation);
@@ -902,6 +1289,7 @@ export const AiAssistantProvider: React.FC<{
       ...prev,
       [orderId]: canceledReservation,
     }));
+    clearReservationTimers(orderId);
     const relatedMsg = messages.find((m) => m.reservationInfo && m.reservationInfo.orderId === orderId);
     if (relatedMsg) {
       updateMessageById(relatedMsg.id, {
@@ -909,7 +1297,7 @@ export const AiAssistantProvider: React.FC<{
         reservationInfo: canceledReservation,
       });
     }
-  }, [reservationsByOrder, messages, updateMessageById]);
+  }, [reservationsByOrder, messages, updateMessageById, clearReservationTimers]);
 
   const rebookOrderReservation = useCallback((orderId: string) => {
     console.log('Rebook order reservation:', orderId);
@@ -1051,6 +1439,35 @@ export const AiAssistantProvider: React.FC<{
     saveChatHistory(messages, contextRef.current);
   }, [messages, overlayMode]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_RESERVATIONS, JSON.stringify(reservationsByOrder));
+    } catch (e) {
+      console.error('Failed to save reservations:', e);
+    }
+  }, [reservationsByOrder]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const updated: Record<string, ReservationInfoCardData> = {};
+    let hasChanges = false;
+
+    Object.entries(reservationsByOrder).forEach(([orderId, reservation]) => {
+      if (reservation.acceptStatus === 'pending' && reservation.acceptDeadlineAt && reservation.acceptDeadlineAt <= now) {
+        updated[orderId] = {
+          ...reservation,
+          acceptStatus: 'failed',
+          failReason: 'timeout',
+        };
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      setReservationsByOrder((prev) => ({ ...prev, ...updated }));
+    }
+  }, []);
+
   const value: AiAssistantContextValue = {
     overlayMode,
     entrySource,
@@ -1090,33 +1507,8 @@ export const AiAssistantProvider: React.FC<{
     switchOrder: () => {},
     executeAction,
     clickGuidedQuestion,
-    submitFeatureCard: (cardType: string, data: Record<string, unknown>) => {
-      console.log('submitFeatureCard:', cardType, data);
-      let reply = '操作已提交';
-      switch (cardType) {
-        case 'redeem_reminder':
-          reply = '好的，使用提醒已设置，我会在指定时间提醒您。';
-          break;
-        case 'reservation_form':
-          reply = '预约申请已提交，商家确认后会第一时间通知您。';
-          break;
-        case 'urgent_request':
-          reply = '加急请求已提交，我们会尽快为您处理，请保持电话畅通。';
-          break;
-        case 'reorder':
-          reply = '好的，正在为您重新下单，请稍候...';
-          break;
-        case 'refund_apply':
-          reply = '退款申请已提交，预计1-3个工作日内处理完成，退款将原路返回。';
-          break;
-        default:
-          reply = '操作成功';
-      }
-      addAssistantMessage(reply);
-    },
-    cancelFeatureCard: () => {
-      console.log('cancelFeatureCard');
-    },
+    submitFeatureCard,
+    cancelFeatureCard,
     checkServiceHealth,
     setDegradeLevel,
     resetSession: () => {
@@ -1139,7 +1531,8 @@ export const AiAssistantProvider: React.FC<{
     setTransferHuman,
     transferHuman,
     wsState,
-    showToast: () => {},
+    showToast,
+    toastText,
     dismissNotification: () => {},
     openReminderSheet,
     closeReminderSheet,
@@ -1161,8 +1554,11 @@ export const AiAssistantProvider: React.FC<{
     rebookOrderReservation,
     onOpenReservation,
     sendOrderCard,
+    placeOrder,
+    startDelivery,
     checkExistingReservation,
     showExistingReservationAlert,
+    clearChatHistory,
   };
 
   return (

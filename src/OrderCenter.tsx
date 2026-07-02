@@ -23,11 +23,13 @@ import {
 } from './orderListPositionMemory';
 import type { HotelOrderStatusText, OrderData, OrderListItem } from './types';
 import { toStandardCategory, getDisplayCategory } from './types';
-import { getReminderByOrder, formatReminderBubbleText, getDaysUntilExpiry, setReminder, cancelReminder, getQuickOptions, formatExpiryDateTime, formatExpiryStatusText, getValidityEndDate, subscribeReminders, buildNoticeTags } from './redeemReminder';
+import { getReminderByOrder, formatReminderBubbleText, getDaysUntilExpiry, setReminder, cancelReminder, getQuickOptions, formatExpiryDateTime, formatExpiryStatusText, getValidityEndDate, subscribeReminders, buildNoticeTags, calcNaturalDayDiff } from './redeemReminder';
 import { useAiAssistantContext, AIAssistantIcon } from './components/AiAssistant';
 
 export interface ReservationInfoCardData {
   orderId?: string;
+  reservationNo?: string;
+  serviceType?: string;
   storeName: string;
   storeAddress: string;
   businessHours: string;
@@ -1705,7 +1707,7 @@ function TravelPresaleBookingFlow({
   );
 }
 
-function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reservationNow, onCancelReservation, onRebookReservation }: { orderId: string, onBack: () => void, onChatWithOrder: (payload: string | OrderListItem) => void, reservationInfo?: ReservationInfoCardData, reservationNow: number, onCancelReservation?: (orderId?: string) => void, onRebookReservation?: (reservation: ReservationInfoCardData) => void }) {
+function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reservationNow, onCancelReservation, onRebookReservation, autoOpenReservation, onReservationOpened }: { orderId: string, onBack: () => void, onChatWithOrder: (payload: string | OrderListItem) => void, reservationInfo?: ReservationInfoCardData, reservationNow: number, onCancelReservation?: (orderId?: string) => void, onRebookReservation?: (reservation: ReservationInfoCardData) => void, autoOpenReservation?: boolean, onReservationOpened?: () => void }) {
   const [detail, setDetail] = useState<OrderData | null>(null);
   const [listItem, setListItem] = useState<OrderListItem | null>(null);
   const [paymentDeadlineAt, setPaymentDeadlineAt] = useState(() => Date.now() + 28 * 60 * 1000 + 34 * 1000);
@@ -1742,6 +1744,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
   const [travelConfirmOpen, setTravelConfirmOpen] = useState(false);
   const [travelConfirmingDeadline, setTravelConfirmingDeadline] = useState<number | null>(null);
   const [travelCancelConfirmOpen, setTravelCancelConfirmOpen] = useState(false);
+  const [reservationCancelConfirmOpen, setReservationCancelConfirmOpen] = useState(false);
 
   useEffect(() => {
     fetchOrderById(orderId).then(setDetail);
@@ -1844,6 +1847,56 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
     setPresaleSubmitting(false);
   };
 
+  const openTravelBooking = () => {
+    const defaultTravelers = detail?.vacationInfo?.passengers?.length
+      ? detail.vacationInfo.passengers.map(name => ({ name, idCard: '', phone: '' }))
+      : [{ name: '', idCard: '', phone: '' }, { name: '', idCard: '', phone: '' }];
+    setTravelBookingOpen(true);
+    setTravelBookingStep(0);
+    setTravelStartDate('');
+    setTravelEndDate('');
+    setTravelTravelers(defaultTravelers);
+    setTravelContactPhone('13922920002');
+    setTravelContactEmail('');
+    setTravelBookingError('');
+  };
+
+  const closeTravelBooking = () => {
+    setTravelBookingOpen(false);
+    setTravelConfirmOpen(false);
+    setTravelBookingError('');
+    setTravelBookingSubmitting(false);
+  };
+
+  useEffect(() => {
+    if (!autoOpenReservation) return;
+    if (!detail || !listItem) return;
+
+    const scenicOrder = toStandardCategory(listItem.category) === 'scenic';
+    const travelOrder = toStandardCategory(listItem.category) === 'travel';
+    const hotelOrder = isHotelOrder(listItem);
+    const isScenicCalendarDesignState = scenicOrder && listItem.scenicProductType === 'calendar_ticket';
+    const isScenicPresaleDesignState = scenicOrder && listItem.scenicProductType === 'presale_voucher';
+    const isTravelPresaleDesignState = travelOrder && listItem.travelProductType === 'presale_voucher';
+
+    const trigger = () => {
+      if (isScenicCalendarDesignState || isScenicPresaleDesignState) {
+        openPresaleBooking();
+        onReservationOpened?.();
+      } else if (isTravelPresaleDesignState) {
+        openTravelBooking();
+        onReservationOpened?.();
+      } else if (hotelOrder) {
+        setHotelReserveOpen(true);
+        setHotelReserveStep(0);
+        onReservationOpened?.();
+      }
+    };
+
+    const timer = setTimeout(trigger, 300);
+    return () => clearTimeout(timer);
+  }, [autoOpenReservation, detail, listItem, openPresaleBooking, openTravelBooking, onReservationOpened]);
+
   const handlePresaleNext = () => {
     if (presaleSubmitting) return;
     if (presaleBookingStep === 0) {
@@ -1898,27 +1951,6 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
-  };
-
-  const openTravelBooking = () => {
-    const defaultTravelers = detail?.vacationInfo?.passengers?.length
-      ? detail.vacationInfo.passengers.map(name => ({ name, idCard: '', phone: '' }))
-      : [{ name: '', idCard: '', phone: '' }, { name: '', idCard: '', phone: '' }];
-    setTravelBookingOpen(true);
-    setTravelBookingStep(0);
-    setTravelStartDate('');
-    setTravelEndDate('');
-    setTravelTravelers(defaultTravelers);
-    setTravelContactPhone('13922920002');
-    setTravelContactEmail('');
-    setTravelBookingError('');
-  };
-
-  const closeTravelBooking = () => {
-    setTravelBookingOpen(false);
-    setTravelConfirmOpen(false);
-    setTravelBookingError('');
-    setTravelBookingSubmitting(false);
   };
 
   const handleTravelNext = () => {
@@ -4917,7 +4949,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
                   now={reservationNow}
                   onCancel={
                     onCancelReservation && (reservationInfo.acceptStatus === 'pending' || reservationInfo.acceptStatus === 'accepted')
-                      ? () => onCancelReservation(orderId)
+                      ? () => setReservationCancelConfirmOpen(true)
                       : undefined
                   }
                   onRebook={onRebookReservation ? () => onRebookReservation(reservationInfo) : undefined}
@@ -5153,9 +5185,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
                   void reminderVersion;
                   const reminder = getReminderByOrder(orderId);
                   if (!reminder || reminder.status !== 'active') return null;
-                  const now = Date.now();
-                  const diffMs = reminder.remindAt - now;
-                  const diffDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                  const diffDays = Math.max(0, calcNaturalDayDiff(reminder.remindAt));
                   const bubbleText = formatReminderBubbleText(diffDays);
                   return (
                     <div
@@ -5333,6 +5363,24 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
         }}
       />
 
+      {reservationCancelConfirmOpen && (
+        <div className="reservation-confirm-overlay" onClick={() => setReservationCancelConfirmOpen(false)}>
+          <div className="reservation-confirm-dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="reservation-confirm-title">确认取消预约？</div>
+            <div className="reservation-confirm-desc">
+              取消预约后可能约不到热门时间，确定取消预约吗？
+            </div>
+            <div className="reservation-confirm-actions">
+              <button className="reservation-confirm-secondary" onClick={() => setReservationCancelConfirmOpen(false)}>继续保留</button>
+              <button className="reservation-confirm-primary" onClick={() => {
+                onCancelReservation?.(orderId);
+                setReservationCancelConfirmOpen(false);
+              }}>确认取消</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -5349,6 +5397,8 @@ export default function OrderCenter({
   reservationNow,
   initialDetailOrder,
   onInitialDetailConsumed,
+  reservationTrigger,
+  onReservationTriggerConsumed,
 }: {
   onChatWithOrder: (payload: string | OrderListItem) => void;
   reservationsByOrder?: Record<string, ReservationInfoCardData>;
@@ -5357,6 +5407,8 @@ export default function OrderCenter({
   reservationNow: number;
   initialDetailOrder?: OrderListItem | null;
   onInitialDetailConsumed?: () => void;
+  reservationTrigger?: { orderId: string; category: string; productType?: string } | null;
+  onReservationTriggerConsumed?: () => void;
 }) {
   const { hasUnread } = useAiAssistantContext();
   const storedPositionRef = useRef<OrderListPositionSnapshot | null>(
@@ -5368,10 +5420,12 @@ export default function OrderCenter({
   const [view, setView] = useState<'list' | 'detail'>(initialDetailOrder ? 'detail' : 'list');
   const [selectedOrder, setSelectedOrder] = useState<OrderListItem | null>(initialDetailOrder ?? null);
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'unredeemed' | 'unreviewed' | 'refunded'>(initialFilter ?? 'unredeemed');
+  const [autoOpenReservation, setAutoOpenReservation] = useState(false);
 
   const filteredOrders = useMemo(() => {
     return ORDER_LIST.filter(order => {
       if (order.category === 'show') return false;
+      if (order.category === 'transport') return false;
       const text = order.statusText;
       if (filter === 'all') return true;
       if (filter === 'unpaid') return text === '待支付';
@@ -5390,6 +5444,17 @@ export default function OrderCenter({
     setView('detail');
     onInitialDetailConsumed?.();
   }, [initialDetailOrder, onInitialDetailConsumed]);
+
+  useEffect(() => {
+    if (!reservationTrigger) return;
+    const order = ORDER_LIST.find(o => o.orderId === reservationTrigger.orderId);
+    if (order) {
+      setSelectedOrder(order);
+      setView('detail');
+      setAutoOpenReservation(true);
+    }
+    onReservationTriggerConsumed?.();
+  }, [reservationTrigger, onReservationTriggerConsumed]);
 
   useEffect(() => {
     if (view !== 'list' || !listRef.current) return;
@@ -5442,12 +5507,17 @@ export default function OrderCenter({
     return (
       <OrderDetail
         orderId={selectedOrder.orderId}
-        onBack={() => setView('list')}
+        onBack={() => {
+          setView('list');
+          setAutoOpenReservation(false);
+        }}
         onChatWithOrder={onChatWithOrder}
         reservationInfo={reservationsByOrder[selectedOrder.orderId]}
         reservationNow={reservationNow}
         onCancelReservation={onCancelReservation}
         onRebookReservation={onRebookReservation}
+        autoOpenReservation={autoOpenReservation}
+        onReservationOpened={() => setAutoOpenReservation(false)}
       />
     );
   }
@@ -5455,7 +5525,7 @@ export default function OrderCenter({
   const tabs = [
     { key: 'all', label: '全部' },
     { key: 'unpaid', label: '待支付' },
-    { key: 'unredeemed', label: '待使用', count: ORDER_LIST.filter(o => o.category !== 'show' && ['待使用', '待预约', '预约确认中', '预约成功', '预订确认中', '预订成功'].includes(o.statusText)).length },
+    { key: 'unredeemed', label: '待使用', count: ORDER_LIST.filter(o => o.category !== 'show' && o.category !== 'transport' && ['待使用', '待预约', '预约确认中', '预约成功', '预订确认中', '预订成功'].includes(o.statusText)).length },
     { key: 'unreviewed', label: '待评价' },
     { key: 'refunded', label: '退款' },
   ];
@@ -5568,7 +5638,7 @@ export default function OrderCenter({
               </div>
               <div className="oc-card-foot-v2">
                 <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); }}>再来一单</button>
-                <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); onChatWithOrder(order.orderId); }}>去使用</button>
+                <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); onChatWithOrder(order.orderId); }}>查看券码</button>
               </div>
             </div>
           ))

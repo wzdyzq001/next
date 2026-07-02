@@ -1,5 +1,7 @@
 export interface ReservationInfoCardData {
   orderId?: string;
+  reservationNo?: string;
+  serviceType?: string;
   storeName: string;
   storeAddress: string;
   businessHours: string;
@@ -10,6 +12,7 @@ export interface ReservationInfoCardData {
   estimatedAcceptTime: string;
   acceptDeadlineAt?: number;
   merchantAcceptAt?: number;
+  failReason?: 'timeout' | 'rejected';
 }
 
 interface ReservationInfoCardProps {
@@ -76,7 +79,9 @@ export function ReservationInfoCard({
 
       <div className="reservation-info-note">
         {isFailed
-          ? '商家未接单，可重新发起预约。'
+          ? data.failReason === 'rejected'
+            ? '商家拒绝了预约，可重新发起预约。'
+            : '商家未接单，可重新发起预约。'
           : isCanceled
             ? '预约已取消，可重新预约。'
             : isAccepted
@@ -87,11 +92,11 @@ export function ReservationInfoCard({
         <button className="reservation-info-cancel rebook" onClick={onRebook}>
           重新预约
         </button>
-      ) : onCancel && !isPending ? (
+      ) : onCancel && isPending ? (
         <button className="reservation-info-cancel" onClick={onCancel}>
           取消预约
         </button>
-      ) : onCancel && isPending ? (
+      ) : onCancel && isAccepted ? (
         <button className="reservation-info-cancel" onClick={onCancel}>
           取消预约
         </button>

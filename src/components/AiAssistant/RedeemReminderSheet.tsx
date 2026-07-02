@@ -134,12 +134,12 @@ export function RedeemReminderSheet({
 
   return (
     <div
-      className={`reminder-sheet-overlay ${open ? 'open' : ''}`}
+      className={`redeem-reminder-sheet-mask ${open ? 'open' : ''}`}
       onClick={onClose}
       aria-hidden={!open}
     >
       <div
-        className={`reminder-sheet ${open ? 'open' : ''}`}
+        className={`redeem-reminder-sheet ${open ? 'open' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label="设置使用提醒"
@@ -148,121 +148,103 @@ export function RedeemReminderSheet({
         {showMaxToast && (
           <div className="reminder-max-toast">使用提醒不可晚于有效期</div>
         )}
-        <div className="reminder-sheet-grabber" />
-        <div className="reminder-sheet-header">
+        <div className="redeem-reminder-sheet-head">
           <div>
-            <div className="reminder-sheet-title">设置使用提醒</div>
-            <div className="reminder-sheet-product">{productName}</div>
+            <h3>设置使用提醒</h3>
+            <div style={{ fontSize: '12px', color: 'var(--ink-mute)', marginTop: '4px' }}>
+              {productName}
+            </div>
           </div>
           <button
-            className="reminder-sheet-close"
+            className="redeem-reminder-sheet-close"
             onClick={onClose}
             aria-label="关闭提醒设置"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+            ✕
           </button>
         </div>
 
-        <div className="reminder-sheet-body">
-          {hasExpiry && (
-            <div className={`reminder-expiry-info ${isExpired ? 'is-expired' : ''}`}>
-              <div className="reminder-expiry-row">
-                <div className="reminder-expiry-row-label">有效期至</div>
-                <div className="reminder-expiry-row-value">{expiryDateTimeText}</div>
-              </div>
-              <div className="reminder-expiry-row">
-                <div className="reminder-expiry-row-label">剩余时间</div>
-                <div className={`reminder-expiry-row-value ${isExpired ? 'text-expired' : 'text-active'}`}>
-                  {expiryStatusText}
-                </div>
+        {hasExpiry && (
+          <div className={`reminder-expiry-info ${isExpired ? 'is-expired' : ''}`}>
+            <div className="reminder-expiry-row">
+              <div className="reminder-expiry-row-label">有效期至</div>
+              <div className="reminder-expiry-row-value">{expiryDateTimeText}</div>
+            </div>
+            <div className="reminder-expiry-row">
+              <div className="reminder-expiry-row-label">剩余时间</div>
+              <div className={`reminder-expiry-row-value ${isExpired ? 'text-expired' : 'text-active'}`}>
+                {expiryStatusText}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {isExpired ? (
-            <div className="reminder-expired-card">
-              <div className="reminder-expired-icon">⌛</div>
-              <div className="reminder-expired-title">订单已过期</div>
-              <div className="reminder-expired-desc">
-                无法设置使用提醒
-              </div>
+        {isExpired ? (
+          <div className="reminder-expired-card">
+            <div className="reminder-expired-icon">⌛</div>
+            <div className="reminder-expired-title">订单已过期</div>
+            <div className="reminder-expired-desc">
+              无法设置使用提醒
             </div>
-          ) : (
-            <>
-              <div className="reminder-section">
-                <div className="reminder-section-label">
-                  提前提醒天数
-                  {hasExpiry && (
-                    <span className="reminder-section-hint">（最多 {maxDays} 天）</span>
-                  )}
-                </div>
-                <div className="reminder-custom-row">
-                  <button
-                    className="reminder-day-btn"
-                    onClick={handleDecrease}
-                    disabled={customDays <= 0}
-                  >
-                    −
-                  </button>
-                  <div className="reminder-days-input">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="reminder-days-input-field"
-                      value={customDays}
-                      onChange={handleInputChange}
-                      onBlur={handleInputBlur}
-                    />
-                    <span>天后提醒</span>
-                  </div>
-                  <button
-                    className="reminder-day-btn"
-                    onClick={handleIncrease}
-                    disabled={customDays >= maxDays}
-                  >
-                    +
-                  </button>
-                </div>
+          </div>
+        ) : (
+          <>
+            <div className="redeem-reminder-sheet-section-title">提前提醒天数</div>
+            <div className="reminder-custom-row">
+              <button
+                className="reminder-day-btn"
+                onClick={handleDecrease}
+                disabled={customDays <= 0}
+              >
+                −
+              </button>
+              <div className="reminder-days-input">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="reminder-days-input-field"
+                  value={customDays}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                />
+                <span>天后提醒</span>
               </div>
+              <button
+                className="reminder-day-btn"
+                onClick={handleIncrease}
+                disabled={customDays >= maxDays}
+              >
+                +
+              </button>
+            </div>
 
-              {quickCount > 0 && (
-                <div className="reminder-section">
-                  <div className="reminder-section-label">快捷选择</div>
-                  <div className={`reminder-quick-grid count-${quickCount}`}>
-                    {filteredQuickOptions.map((option, index) => (
-                      <button
-                        key={index}
-                        className={`reminder-quick-item ${selectedQuickIndex === index ? 'selected' : ''}`}
-                        onClick={() => handleQuickSelect(index)}
-                      >
-                        <div className="quick-item-label">{option.label}</div>
-                        <div className="quick-item-desc">{option.daysLater}天后</div>
-                        {selectedQuickIndex === index && (
-                          <div className="quick-item-check">✓</div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+            {quickCount > 0 && (
+              <>
+                <div className="redeem-reminder-sheet-section-title">快捷选择</div>
+                <div className="redeem-reminder-quick-options">
+                  {filteredQuickOptions.map((option, index) => (
+                    <button
+                      key={index}
+                      className={`redeem-reminder-quick-option ${selectedQuickIndex === index ? 'active' : ''}`}
+                      onClick={() => handleQuickSelect(index)}
+                    >
+                      <div className="day">{option.label}</div>
+                      <div className="date">{option.daysLater}天后</div>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </>
+        )}
 
-        <div className="reminder-sheet-footer">
-          <button className="reminder-cancel-btn" onClick={onClose}>
-            取消
-          </button>
-          <button
-            className="reminder-confirm-btn"
-            onClick={handleConfirm}
-            disabled={isExpired}
-          >
-            确定
-          </button>
-        </div>
+        <button
+          className="redeem-reminder-confirm-btn"
+          onClick={handleConfirm}
+          disabled={isExpired}
+        >
+          确定
+        </button>
       </div>
     </div>
   );
