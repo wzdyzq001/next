@@ -18,9 +18,74 @@ export interface ScenarioMock {
   order: OrderData;
 }
 
+export const FOOD_MAIN_STATUSES = [
+  '待支付',
+  '待使用',
+  '订单取消',
+  '交易完成',
+  '退款申请中',
+  '退款成功',
+  '退款失败',
+] as const;
+
+export type FoodMainStatus = typeof FOOD_MAIN_STATUSES[number];
+
+export const FOOD_SELF_ORDER_SUB_STATUSES = [
+  '待商家接单',
+  '商家已接单',
+  '制作中',
+  '待取餐',
+  '已取餐',
+] as const;
+
+export const FOOD_DELIVERY_SUB_STATUSES = [
+  '待商家接单',
+  '商家已接单',
+  '商家备餐中',
+  '待骑手取餐',
+  '配送中',
+  '已送达',
+] as const;
+
+export const FOOD_VOUCHER_SUB_STATUSES = [
+  '已核销',
+] as const;
+
+export const FOOD_SUB_STATUS_TO_MAIN: Record<string, FoodMainStatus> = {
+  '待商家接单': '交易完成',
+  '商家已接单': '交易完成',
+  '制作中': '交易完成',
+  '待取餐': '交易完成',
+  '已取餐': '交易完成',
+  '商家备餐中': '交易完成',
+  '待骑手取餐': '交易完成',
+  '配送中': '交易完成',
+  '已送达': '交易完成',
+  '已核销': '交易完成',
+};
+
+export function getMainOrderStatus(order: OrderListItem): string {
+  if (FOOD_MAIN_STATUSES.includes(order.statusText as FoodMainStatus)) {
+    return order.statusText;
+  }
+  if (order.category === 'food' && FOOD_SUB_STATUS_TO_MAIN[order.statusText]) {
+    return FOOD_SUB_STATUS_TO_MAIN[order.statusText];
+  }
+  return order.statusText;
+}
+
+export function getFoodFulfillmentType(order: OrderListItem): 'self_order' | 'delivery' | 'voucher' | null {
+  if (order.category !== 'food') return null;
+  const modes = order.fulfillmentModes || [];
+  if (modes.includes('delivery') && !modes.includes('order') && !modes.includes('code')) return 'delivery';
+  if (modes.includes('order') && !modes.includes('delivery') && !modes.includes('code')) return 'self_order';
+  if (modes.includes('code') && modes.length === 1) return 'voucher';
+  return null;
+}
+
 export function mapStatusTextToOrderStatus(statusText: string): OrderStatus {
   if (statusText === '待支付') return 'pending_payment';
-  if (statusText === '交易完成' || statusText === '已核销') return 'redeemed';
+  if (statusText === '交易完成' || statusText === '已核销' || FOOD_SUB_STATUS_TO_MAIN[statusText]) return 'redeemed';
   if (statusText === '订单取消') return 'canceled';
   if (statusText === '退款成功') return 'refunded';
   if (statusText === '退款申请中') return 'refunding';
@@ -669,7 +734,7 @@ export function fetchOrderById(orderId: string): Promise<OrderData | null> {
           voucherCode: isScenic ? undefined : `9001 ${listItem.orderId.slice(-4)} 653`,
           refundInfo: buildRefundInfoFromListItem(listItem),
           productRules: {
-            validDate: isScenicGroupBuy ? '2026.07.01至2026.08.31' : isScenicCalendar ? '2026.06.29至2026.06.29' : isScenicPresale ? '2026.07.01至2026.10.31' : '2026-06-25 至 2026-07-25',
+            validDate: listItem.productRules?.validDate || (isScenicGroupBuy ? '2026.07.01至2026.08.31' : isScenicCalendar ? '2026.06.29至2026.06.29' : isScenicPresale ? '2026.07.01至2026.10.31' : '2026-06-25 至 2026-07-25'),
             invalidDate: isScenicGroupBuy ? '2026.07.15至2026.07.21' : undefined,
             notice: isTransport
               ? ['请携带有效身份证件', '建议提前2小时到达']
@@ -840,6 +905,11 @@ export function fetchOrderById(orderId: string): Promise<OrderData | null> {
             storeAddress: shouldUseListRefundState ? fallback.storeAddress : hit.order.storeAddress,
             status: shouldUseListRefundState ? fallback.status : hit.order.status,
             refundInfo: shouldUseListRefundState ? fallback.refundInfo : hit.order.refundInfo,
+            productRules: {
+              ...hit.order.productRules,
+              ...fallback.productRules,
+              validDate: fallback.productRules?.validDate || hit.order.productRules?.validDate,
+            },
           };
         })()
       : hit?.order
@@ -887,6 +957,11 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     category: 'fun',
     orderTime: '2026-06-25 10:20:00',
     thumbnail: '🎲',
+    productRules: {
+      validDate: '2026-06-25 至 2026-07-31',
+      notice: ['周一至周日可用', '需提前1天预约', '不与其他优惠同享'],
+      refundRule: '随时退 · 过期自动退'
+    },
   },
   {
     orderId: 'NL202606250002',
@@ -898,6 +973,11 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     category: 'fun',
     orderTime: '2026-06-24 18:30:00',
     thumbnail: '🎲',
+    productRules: {
+      validDate: '2026-06-20 至 2026-07-20',
+      notice: ['周一至周日可用', '需提前1天预约'],
+      refundRule: '随时退 · 过期自动退'
+    },
   },
   {
     orderId: 'MT2026061800101',
@@ -973,6 +1053,11 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     category: 'food',
     orderTime: '2026-06-17 11:46:28',
     thumbnail: '🧃',
+    productRules: {
+      validDate: '2026-06-17 至 2026-07-31',
+      notice: ['不与其他优惠同享', '周末节假日通用'],
+      refundRule: '随时退 · 过期自动退'
+    },
   },
   {
     orderId: 'MT2026061700200',
@@ -1001,9 +1086,10 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     merchant: '三亚5日纯玩小包团',
     product: '三亚5日4晚纯玩小包团 · 含往返机票',
     price: 399900,
-    statusText: '待出行',
+    statusText: '待预约',
     statusColor: 'orange',
     category: 'travel',
+    travelProductType: 'presale_voucher',
     orderTime: '2026-06-10 09:15:33',
     thumbnail: '🌴',
   },
@@ -1027,6 +1113,7 @@ const STATIC_ORDER_LIST: OrderListItem[] = [
     statusText: '交易完成',
     statusColor: 'green',
     category: 'travel',
+    travelProductType: 'presale_voucher',
     orderTime: '2026-06-15 08:00:00',
     thumbnail: '⛰️',
   },
@@ -1443,6 +1530,19 @@ function gen(
   deliveryAddress?: string,
 ): OrderListItem {
   generatedIdCounter++;
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 10);
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 30);
+  const formatDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const validDate = `${formatDate(startDate)} 至 ${formatDate(endDate)}`;
+
   return {
     orderId: `MT202606${generatedIdCounter}`,
     merchant,
@@ -1461,7 +1561,12 @@ function gen(
     totalQuantity: category === 'fun' ? 2 : 1,
     refundQuantity: ['退款成功', '退款申请中', '退款失败'].includes(statusText) ? 1 : undefined,
     orderTime: '2026-06-17 10:00:00',
-    thumbnail
+    thumbnail,
+    productRules: {
+      validDate,
+      notice: ['不与其他优惠同享', '周末节假日通用'],
+      refundRule: '随时退 · 过期自动退'
+    }
   };
 }
 
@@ -1478,6 +1583,14 @@ const colorMap: Record<string, any> = {
   '预约成功': 'green',
   '预订确认中': 'blue',
   '预订成功': 'green',
+  '待接单': 'orange',
+  '制作中': 'blue',
+  '配送中': 'blue',
+  '待取餐': 'blue',
+  '已入住': 'green',
+  '已入园': 'green',
+  '待出行': 'green',
+  '行程中': 'green',
 };
 
 const cat1Statuses = ['待支付', '待使用', '交易完成', '退款成功', '退款申请中', '退款失败'];
@@ -1519,4 +1632,93 @@ export const ORDER_LIST: OrderListItem[] = [
   gen('麦当劳(知春路店)', '双人牛排套餐（券码+配送）', 'food', '待使用', 'orange', '🥩', undefined, undefined, undefined, ['code', 'delivery'], '紫金数码科技园4号楼东区'),
   gen('麦当劳(知春路店)', '双人牛排套餐（点单+券码+配送）', 'food', '待使用', 'orange', '🥩', undefined, undefined, undefined, ['order', 'code', 'delivery'], '紫金数码科技园4号楼东区'),
   gen('肯德基(五道口店)', '全家桶套餐（点单+配送）', 'food', '待使用', 'orange', '🍗', undefined, undefined, undefined, ['order', 'delivery'], '中关村软件园2号楼'),
+
+  // ===== 补充：餐饮-仅券码(code) - 其他状态 =====
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '待支付', colorMap['待支付'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '交易完成', colorMap['交易完成'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '订单取消', colorMap['订单取消'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款申请中', colorMap['退款申请中'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款成功', colorMap['退款成功'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款失败', colorMap['退款失败'], '🥩', undefined, undefined, undefined, ['code']),
+  gen('海底捞(知春路店)', '番茄锅底双人套餐（仅券码）', 'food', '制作中', colorMap['制作中'], '🍲', undefined, undefined, undefined, ['code']),
+
+  // ===== 补充：餐饮-仅点单(order) - 其他状态 =====
+  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '待接单', colorMap['待接单'], '☕', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '制作中', colorMap['制作中'], '☕', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '待取餐', colorMap['待取餐'], '☕', undefined, undefined, undefined, ['order']),
+
+  // ===== 补充：餐饮-仅配送(delivery) - 其他状态 =====
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '待支付', colorMap['待支付'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '待接单', colorMap['待接单'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '制作中', colorMap['制作中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '配送中', colorMap['配送中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '交易完成', colorMap['交易完成'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+
+  // ===== 补充：酒店 - 已入住 =====
+  gen('万豪酒店预售', '豪华海景房2晚通兑券', 'hotel', '已入住', colorMap['已入住'], '🏨', 'presale_voucher'),
+  gen('希尔顿酒店(日历房)', '高级大床房 1晚', 'hotel', '已入住', colorMap['已入住'], '🛏️', 'calendar_room'),
+
+  // ===== 补充：景区 - 已入园 =====
+  gen('环球影城(预售)', '儿童票预售券', 'scenic', '已入园', colorMap['已入园'], '🎡', undefined, 'presale_voucher'),
+  gen('故宫博物院', '上午场门票(指定日)', 'scenic', '已入园', colorMap['已入园'], '🏛️', undefined, 'calendar_ticket'),
+
+  // ===== 补充：旅行社 - 待出行、行程中 =====
+  gen('中国青年旅行社', '三亚游艇环岛4天3晚 蓝高450帆船包船出海', 'travel', '待出行', colorMap['待出行'], '🌊', undefined, undefined, 'presale_voucher'),
+  gen('中国青年旅行社', '三亚游艇环岛4天3晚 蓝高450帆船包船出海', 'travel', '行程中', colorMap['行程中'], '🌊', undefined, undefined, 'presale_voucher'),
+
+  // ===== 补充：综合娱乐(fun) - 订单取消 =====
+  gen('星聚会KTV', '3小时欢唱套餐', 'fun', '订单取消', colorMap['订单取消'], '🎤'),
+
+  // ================================================================
+  // 待评价测试订单 - 覆盖4种核销方式 + 全部履约节点
+  // ================================================================
+
+  // ---- 券码核销（站内） - 2条 ----
+  (() => { const o = gen('星巴克(万象城店)', '【券码核销】冰美式大杯 团购券', 'food', '交易完成', colorMap['交易完成'], '☕'); o._testTags = ['券码核销', '已核销']; return o; })(),
+  (() => { const o = gen('海底捞(南山店)', '【券码核销】番茄锅底双人套餐', 'food', '交易完成', colorMap['交易完成'], '🍲'); o._testTags = ['券码核销', '已使用']; return o; })(),
+
+  // ---- 点单自提（站内） - 5条（覆盖5个履约节点） ----
+  (() => { const o = gen('瑞幸咖啡(科技园店)', '【点单自提】生椰拿铁大杯 - 下单成功', 'food', '交易完成', colorMap['交易完成'], '☕'); o._testTags = ['点单自提', '下单成功']; return o; })(),
+  (() => { const o = gen('喜茶(万象城店)', '【点单自提】多肉葡萄大杯 - 商家接单', 'food', '交易完成', colorMap['交易完成'], '🧋'); o._testTags = ['点单自提', '商家接单']; return o; })(),
+  (() => { const o = gen('麦当劳(科技园店)', '【点单自提】麦辣鸡腿堡套餐 - 制作中', 'food', '交易完成', colorMap['交易完成'], '🍔'); o._testTags = ['点单自提', '制作中']; return o; })(),
+  (() => { const o = gen('肯德基(华强北店)', '【点单自提】全家桶套餐 - 待取餐', 'food', '交易完成', colorMap['交易完成'], '🍗'); o._testTags = ['点单自提', '待取餐']; return o; })(),
+  (() => { const o = gen('蜜雪冰城(科兴店)', '【点单自提】冰鲜柠檬水 - 已取餐', 'food', '交易完成', colorMap['交易完成'], '🍋'); o._testTags = ['点单自提', '已取餐']; return o; })(),
+
+  // ---- 配送（站内） - 6条（覆盖6个履约节点） ----
+  (() => { const o = gen('麦当劳(知春路店)', '【配送】巨无霸套餐 - 下单成功', 'food', '交易完成', colorMap['交易完成'], '🍔'); o._testTags = ['配送', '下单成功']; return o; })(),
+  (() => { const o = gen('肯德基(五道口店)', '【配送】全家桶套餐 - 待商家接单', 'food', '交易完成', colorMap['交易完成'], '🍗'); o._testTags = ['配送', '待接单']; return o; })(),
+  (() => { const o = gen('必胜客(南山店)', '【配送】超级至尊披萨 - 备餐中', 'food', '交易完成', colorMap['交易完成'], '🍕'); o._testTags = ['配送', '备餐中']; return o; })(),
+  (() => { const o = gen('太二酸菜鱼(三里屯店)', '【配送】招牌酸菜鱼 - 待骑手取餐', 'food', '交易完成', colorMap['交易完成'], '🐟'); o._testTags = ['配送', '待骑手取餐']; return o; })(),
+  (() => { const o = gen('海底捞(海岸城店)', '【配送】火锅四人套餐 - 配送中', 'food', '交易完成', colorMap['交易完成'], '🍲'); o._testTags = ['配送', '配送中']; return o; })(),
+  (() => { const o = gen('西贝莜面村(国贸店)', '【配送】莜面鱼鱼套餐 - 已送达', 'food', '交易完成', colorMap['交易完成'], '🥘'); o._testTags = ['配送', '已送达']; return o; })(),
+
+  // ---- 站外核销 - 2条 ----
+  (() => { const o = gen('呷哺呷哺(大悦城店)', '【站外核销】单人火锅套餐 - 商家App核销', 'food', '交易完成', colorMap['交易完成'], '🍲'); o._testTags = ['站外核销', '商家App']; return o; })(),
+  (() => { const o = gen('和府捞面(金融街店)', '【站外核销】草本汤面套餐 - 微信小程序核销', 'food', '交易完成', colorMap['交易完成'], '🍜'); o._testTags = ['站外核销', '微信小程序']; return o; })(),
+
+  // ================================================================
+  // 两级状态模型测试订单 - 餐饮子状态完整覆盖
+  // statusText 为子状态名，主状态通过 getMainOrderStatus() 计算
+  // ================================================================
+
+  // ---- 自提子状态（5个） ----
+  (() => { const o = gen('瑞幸咖啡(中关村店)', '【自提】丝绒拿铁 - 待商家接单', 'food', '待商家接单', 'green', '☕', undefined, undefined, undefined, ['order']); o._testTags = ['测试', '自提', '待商家接单']; return o; })(),
+  (() => { const o = gen('喜茶(西单店)', '【自提】多肉葡萄 - 商家已接单', 'food', '商家已接单', 'green', '🧋', undefined, undefined, undefined, ['order']); o._testTags = ['测试', '自提', '商家已接单']; return o; })(),
+  (() => { const o = gen('麦当劳(国贸店)', '【自提】麦辣鸡腿堡 - 制作中', 'food', '制作中', 'green', '🍔', undefined, undefined, undefined, ['order']); o._testTags = ['测试', '自提', '制作中']; return o; })(),
+  (() => { const o = gen('肯德基(望京店)', '【自提】全家桶 - 待取餐', 'food', '待取餐', 'green', '🍗', undefined, undefined, undefined, ['order']); o._testTags = ['测试', '自提', '待取餐']; return o; })(),
+  (() => { const o = gen('蜜雪冰城(五道口店)', '【自提】冰鲜柠檬水 - 已取餐', 'food', '已取餐', 'green', '🍋', undefined, undefined, undefined, ['order']); o._testTags = ['测试', '自提', '已取餐']; return o; })(),
+
+  // ---- 配送子状态（6个） ----
+  (() => { const o = gen('麦当劳(三里屯店)', '【配送】巨无霸套餐 - 待商家接单', 'food', '待商家接单', 'green', '🍔', undefined, undefined, undefined, ['delivery'], '朝阳区三里屯SOHO 2号楼'); o._testTags = ['测试', '配送', '待商家接单']; return o; })(),
+  (() => { const o = gen('肯德基(安贞店)', '【配送】全家桶 - 商家已接单', 'food', '商家已接单', 'green', '🍗', undefined, undefined, undefined, ['delivery'], '朝阳区安贞里3区'); o._testTags = ['测试', '配送', '商家已接单']; return o; })(),
+  (() => { const o = gen('必胜客(双井店)', '【配送】超级至尊披萨 - 商家备餐中', 'food', '商家备餐中', 'green', '🍕', undefined, undefined, undefined, ['delivery'], '朝阳区双井富力城'); o._testTags = ['测试', '配送', '商家备餐中']; return o; })(),
+  (() => { const o = gen('太二酸菜鱼(长楹天街店)', '【配送】招牌酸菜鱼 - 待骑手取餐', 'food', '待骑手取餐', 'green', '🐟', undefined, undefined, undefined, ['delivery'], '朝阳区常营长楹天街'); o._testTags = ['测试', '配送', '待骑手取餐']; return o; })(),
+  (() => { const o = gen('海底捞(合生汇店)', '【配送】火锅四人套餐 - 配送中', 'food', '配送中', 'green', '🍲', undefined, undefined, undefined, ['delivery'], '朝阳区大望路合生汇'); o._testTags = ['测试', '配送', '配送中']; return o; })(),
+  (() => { const o = gen('西贝莜面村(蓝色港湾店)', '【配送】莜面鱼鱼套餐 - 已送达', 'food', '已送达', 'green', '🥘', undefined, undefined, undefined, ['delivery'], '朝阳区蓝色港湾'); o._testTags = ['测试', '配送', '已送达']; return o; })(),
+
+  // ---- 券码核销子状态（1个） ----
+  (() => { const o = gen('星巴克(颐堤港店)', '【券码】冰美式大杯 - 已核销', 'food', '已核销', 'green', '☕', undefined, undefined, undefined, ['code']); o._testTags = ['测试', '券码', '已核销']; return o; })(),
+
+  // ---- 站外核销（1个） ----
+  (() => { const o = gen('呷哺呷哺(悠唐店)', '【站外】单人火锅 - 商家App核销', 'food', '已核销', 'green', '🍲', undefined, undefined, undefined, ['code']); o._testTags = ['测试', '站外核销', '商家App']; return o; })(),
 ];

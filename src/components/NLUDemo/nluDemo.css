@@ -1,0 +1,373 @@
+.nlu-demo-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  background: #f5f6f7;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.nlu-demo-sidebar {
+  width: 280px;
+  background: #fff;
+  border-right: 1px solid #e5e6eb;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.nlu-demo-sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e6eb;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.nlu-demo-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.nlu-demo-tab {
+  flex: 1;
+  padding: 12px 8px;
+  font-size: 13px;
+  color: #4e5969;
+  text-align: center;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.nlu-demo-tab:hover {
+  color: #165dff;
+  background: #f2f3f5;
+}
+
+.nlu-demo-tab.active {
+  color: #165dff;
+  border-bottom-color: #165dff;
+  font-weight: 500;
+}
+
+.nlu-demo-scene-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.nlu-demo-scene-card {
+  padding: 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+  text-align: left;
+  width: 100%;
+}
+
+.nlu-demo-scene-card:hover {
+  border-color: #165dff;
+  background: #f7f8ff;
+}
+
+.nlu-demo-scene-card.active {
+  border-color: #165dff;
+  background: #e8f0ff;
+}
+
+.nlu-demo-scene-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d2129;
+  margin-bottom: 4px;
+}
+
+.nlu-demo-scene-desc {
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.4;
+}
+
+.nlu-demo-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nlu-demo-header {
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e5e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nlu-demo-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.nlu-demo-header-sub {
+  font-size: 12px;
+  color: #86909c;
+  margin-top: 2px;
+}
+
+.nlu-demo-reset-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #4e5969;
+  background: #f2f3f5;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nlu-demo-reset-btn:hover {
+  background: #e5e6eb;
+  color: #1d2129;
+}
+
+.nlu-demo-chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nlu-demo-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 85%;
+  animation: nluMsgFadeIn 0.3s ease-out;
+}
+
+@keyframes nluMsgFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nlu-demo-msg.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.nlu-demo-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.nlu-demo-avatar.assistant {
+  background: linear-gradient(135deg, #165dff 0%, #4080ff 100%);
+  color: #fff;
+}
+
+.nlu-demo-avatar.user {
+  background: #e5e6eb;
+}
+
+.nlu-demo-msg-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nlu-demo-msg-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.nlu-demo-msg.assistant .nlu-demo-msg-bubble {
+  background: #fff;
+  color: #1d2129;
+  border: 1px solid #e5e6eb;
+  border-top-left-radius: 4px;
+}
+
+.nlu-demo-msg.user .nlu-demo-msg-bubble {
+  background: #165dff;
+  color: #fff;
+  border-top-right-radius: 4px;
+}
+
+.nlu-demo-msg-text {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.nlu-demo-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.nlu-demo-quick-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #165dff;
+  background: #e8f0ff;
+  border: 1px solid #b3cfff;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.nlu-demo-quick-btn:hover {
+  background: #d4e3ff;
+  border-color: #165dff;
+}
+
+.nlu-demo-typing {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+}
+
+.nlu-demo-typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #86909c;
+  animation: nluTypingBounce 1.4s infinite ease-in-out;
+}
+
+.nlu-demo-typing-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.nlu-demo-typing-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes nluTypingBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.nlu-demo-input-area {
+  padding: 16px 20px;
+  background: #fff;
+  border-top: 1px solid #e5e6eb;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.nlu-demo-input {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  max-height: 120px;
+  transition: border-color 0.2s;
+}
+
+.nlu-demo-input:focus {
+  border-color: #165dff;
+}
+
+.nlu-demo-send-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: #165dff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.nlu-demo-send-btn:hover {
+  background: #0e42d2;
+}
+
+.nlu-demo-send-btn:disabled {
+  background: #c9cdd4;
+  cursor: not-allowed;
+}
+
+.nlu-demo-order-card-wrap {
+  max-width: 420px;
+}
+
+.nlu-demo-reservation-card-wrap {
+  max-width: 400px;
+}
+
+.nlu-demo-reminder-card-wrap {
+  max-width: 400px;
+}
+
+.nlu-demo-urgent-bubble {
+  position: relative;
+  padding: 8px 12px;
+  background: #fff7e8;
+  border: 1px solid #ffd28a;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #d46b08;
+  margin-bottom: 4px;
+  animation: nluUrgentPop 0.3s ease-out;
+}
+
+@keyframes nluUrgentPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.nlu-demo-urgent-bubble.short {
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
