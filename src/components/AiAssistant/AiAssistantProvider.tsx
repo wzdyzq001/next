@@ -30,8 +30,11 @@ import {
   COLLAPSE_VISIBLE_COUNT_ORDER_LIST_FROM_DETAIL,
   COLLAPSE_VISIBLE_COUNT_ORDER_LIST_DEFAULT,
   COLLAPSE_VISIBLE_COUNT_NEW_ORDER,
+  USE_LOCAL_NLU,
 } from './constants';
 import { chat, getOrder } from './api';
+import { processNluMessage, createInitialDialogState } from './nlu';
+import type { NluContext, NluResponseMessage } from './nlu';
 import { convertOrderDataToCardData, convertOrderListItemToCardData } from './orderDataAdapter';
 import { ORDER_LIST } from '../../mock';
 import {
@@ -58,6 +61,7 @@ const createEmptyContext = (): ConversationContext => ({
   conversationTurns: 0,
   createdAt: Date.now(),
   lastActiveAt: Date.now(),
+  dialogState: createInitialDialogState(),
 });
 
 interface ChatHistoryItem {
@@ -256,7 +260,7 @@ export const AiAssistantProvider: React.FC<{
     contextRef.current.orderContext = {
       category: orderCard.category,
       productType: orderCard.productType,
-      status: orderCard.status,
+      status: orderCard.mainStatus || orderCard.orderStatus,
       refundStage: 'none',
     };
 
@@ -520,6 +524,36 @@ export const AiAssistantProvider: React.FC<{
     console.log('cancelFeatureCard');
   }, []);
 
+  const findLastOrderCard = useCallback((): OrderCardData | undefined => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].orderCard) {
+        return messages[i].orderCard;
+      }
+    }
+    return undefined;
+  }, [messages]);
+
+  const sendNluResponse = useCallback(
+    (responseMessages: NluResponseMessage[]) => {
+      let totalDelay = 0;
+      responseMessages.forEach((msg, index) => {
+        const delay = msg.delay ?? (index === 0 ? 400 : 600);
+        totalDelay += delay;
+        setTimeout(() => {
+          addAssistantMessage(msg.content || '', {
+            quickReplies: msg.quickReplies,
+            orderCard: msg.orderCard,
+            featureCard: msg.featureCard,
+            reservationInfo: msg.reservationInfo,
+            redeemReminder: msg.redeemReminder,
+          });
+        }, totalDelay);
+      });
+      return totalDelay;
+    },
+    [addAssistantMessage]
+  );
+
   const sendMessage = useCallback(
     async (message: string) => {
       if (degradeLevel === 'L2') return;
@@ -528,6 +562,44 @@ export const AiAssistantProvider: React.FC<{
       setIsLoading(true);
       contextRef.current.conversationTurns += 1;
       contextRef.current.lastActiveAt = Date.now();
+
+      if (USE_LOCAL_NLU) {
+        try {
+          const lastOrderCard = findLastOrderCard();
+          const currentDialogState = contextRef.current.dialogState || createInitialDialogState();
+
+          const nluContext: NluContext = {
+            sessionId: sessionIdRef.current || contextRef.current.sessionId,
+            dialogState: currentDialogState,
+            currentOrderId: currentOrderId,
+            orderCard: lastOrderCard,
+            conversationTurns: contextRef.current.conversationTurns,
+            resolvedQuestions: contextRef.current.resolvedQuestions,
+          };
+
+          const response = processNluMessage(message, nluContext);
+
+          contextRef.current.dialogState = response.newDialogState;
+
+          if (response.newSessionId) {
+            sessionIdRef.current = response.newSessionId;
+            contextRef.current.sessionId = response.newSessionId;
+          }
+
+          const totalDelay = sendNluResponse(response.messages);
+
+          setTimeout(() => {
+            setIsLoading(false);
+          }, totalDelay + 200);
+
+          return;
+        } catch (e) {
+          console.error('NLU processing error:', e);
+          addAssistantMessage('抱歉，处理您的问题时出现了错误，请稍后再试。');
+          setIsLoading(false);
+          return;
+        }
+      }
 
       try {
         const response = await chat({
@@ -564,10 +636,12 @@ export const AiAssistantProvider: React.FC<{
         setDegradeLevel('L1');
         addAssistantMessage('抱歉，网络连接异常，请稍后再试。');
       } finally {
-        setIsLoading(false);
+        if (!USE_LOCAL_NLU) {
+          setIsLoading(false);
+        }
       }
     },
-    [degradeLevel, addUserMessage, addAssistantMessage, currentOrderId]
+    [degradeLevel, addUserMessage, addAssistantMessage, currentOrderId, findLastOrderCard, sendNluResponse]
   );
 
   const openAssistant = useCallback(

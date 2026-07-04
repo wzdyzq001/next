@@ -1,8 +1,8 @@
 {
-  "name": "ai-assistant-v2.1",
+  "name": "ai-assistant-v3.0",
   "private": true,
-  "version": "2.1.0",
-  "description": "AI 智能助手 V2.1 - 生活服务订单中心 · 团小帮",
+  "version": "3.0.0",
+  "description": "AI 智能助手 V3.0 - 生活服务订单中心 · 团小帮 · NLU自然语言交互",
   "type": "module",
   "scripts": {
     "dev": "vite",

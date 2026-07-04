@@ -143,6 +143,15 @@ export interface ChatMessage {
   status?: 'sending' | 'sent' | 'error';
 }
 
+export interface DialogState {
+  currentIntent: string | null;
+  entities: Record<string, string>;
+  currentStep: string;
+  orderContext?: Record<string, unknown>;
+  pendingAction?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface ConversationContext {
   sessionId: string;
   currentOrderId?: string;
@@ -156,6 +165,7 @@ export interface ConversationContext {
   conversationTurns: number;
   createdAt: number;
   lastActiveAt: number;
+  dialogState?: DialogState;
 }
 
 export interface AiAssistantState {
