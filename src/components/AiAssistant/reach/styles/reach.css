@@ -33,7 +33,7 @@
 
 .oc-reach-bar-icon {
   font-size: 12px;
-  color: #ffd6d6;
+  color: #ff4d4f;
   flex-shrink: 0;
   font-weight: bold;
   display: flex;
@@ -44,7 +44,7 @@
 }
 
 .oc-reach-bar-info_display .oc-reach-bar-icon {
-  color: #ffd6d6;
+  color: #ff4d4f;
 }
 
 .oc-reach-bar-text {
@@ -63,12 +63,17 @@
 }
 
 .oc-reach-bar-arrow {
-  color: #ffd6d6;
-  font-size: 11px;
+  color: #ff4d4f;
+  font-size: 14px;
   flex-shrink: 0;
   font-weight: 500;
   display: flex;
   align-items: center;
+  justify-content: center;
+  line-height: 1;
+  height: 14px;
+  width: 14px;
+  transform: translateY(-1px);
 }
 
 .oc-reach-bar-space {

@@ -70,13 +70,35 @@ export function getUsageReminderText(ctx: ReachMatchContext): string {
   return `明天${timeStr}提醒`;
 }
 
+export function getUsageReminderBarText(ctx: ReachMatchContext): string {
+  const r = ctx.reminder;
+  if (!r) return '';
+
+  const dayDiff = calcDayDiff(r.remindAt, ctx.now);
+  const date = new Date(r.remindAt);
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  const timeStr = minute === 0 ? `${hour}点` : `${hour}点${minute}分`;
+
+  if (dayDiff <= 0) {
+    return `今天${timeStr}提醒使用`;
+  }
+  if (dayDiff === 1) {
+    return `明天${timeStr}提醒使用`;
+  }
+  return `${month}月${day}日(${dayDiff}天)后${timeStr}提醒使用`;
+}
+
 export const USAGE_REMINDER_BAR_CONFIG_TEMPLATE: Omit<ReachConfig, 'reachId'> = {
   pointType: 'order_card_bar',
   displayMode: 'guide_clickable',
   priority: USAGE_REMINDER_BAR_PRIORITY,
   icon: USAGE_REMINDER_ICON,
   shortText: '使用提醒',
-  longText: (ctx: ReachMatchContext) => getUsageReminderText(ctx),
+  longText: (ctx: ReachMatchContext) => getUsageReminderBarText(ctx),
   match: usageReminderMatch,
 };
 

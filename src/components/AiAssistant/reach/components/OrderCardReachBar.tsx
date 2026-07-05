@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { ReachConfig, ReachMatchContext } from '../types';
 import { resolveLongText } from '../reachEngine';
 import '../styles/reach.css';
@@ -14,18 +14,29 @@ export const OrderCardReachBar: React.FC<OrderCardReachBarProps> = ({
   ctx,
   onClick,
 }) => {
-  const displayText = useMemo(() => {
-    return resolveLongText(config, ctx);
-  }, [config, ctx]);
+  const [now, setNow] = useState(Date.now());
 
-  const isClickable = config.displayMode === 'guide_clickable';
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const liveCtx = useMemo(() => ({ ...ctx, now }), [ctx, now]);
+
+  const displayText = useMemo(() => {
+    return resolveLongText(config, liveCtx);
+  }, [config, liveCtx]);
+
+  const isClickable = config.displayMode === 'guide_clickable' || !!onClick;
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isClickable) return;
     onClick?.(e);
   };
 
-  const barClass = `oc-reach-bar oc-reach-bar-${config.displayMode}`;
+  const barClass = `oc-reach-bar oc-reach-bar-${config.displayMode}${isClickable ? ' clickable' : ''}`;
 
   return (
     <div

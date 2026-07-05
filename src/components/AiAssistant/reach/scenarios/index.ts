@@ -52,7 +52,6 @@ export const enrichUsageReminderTemplate = (
   const actions = orderId ? buildUsageReminderActions(orderId) : [];
   return {
     ...template,
-    longText: (ctx: ReachMatchContext) => getUsageReminderText(ctx),
     ...(orderId ? {
       guideMessage: {
         text: (ctx: ReachMatchContext) => `您设置了${getUsageReminderText(ctx)}，是否查看详情？`,

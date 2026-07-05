@@ -5711,9 +5711,9 @@ export default function OrderCenter({
           config: matched,
           orderId: order.orderId,
         });
-        setSelectedOrder(order);
-        setView('detail');
       }
+      setSelectedOrder(order);
+      setView('detail');
     };
 
     return (

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { ReachConfig, ReachMatchContext, ReachBubbleType } from '../types';
 import { resolveLongText } from '../reachEngine';
 import '../styles/reach.css';
@@ -20,12 +20,23 @@ export const ReachBubble: React.FC<ReachBubbleProps> = ({
   isHidden = false,
   onClick,
 }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const liveCtx = useMemo(() => ({ ...ctx, now }), [ctx, now]);
+
   const displayText = useMemo(() => {
     if (bubbleType === 'short') {
       return config.shortText;
     }
-    return resolveLongText(config, ctx);
-  }, [config, ctx, bubbleType]);
+    return resolveLongText(config, liveCtx);
+  }, [config, liveCtx, bubbleType]);
 
   const bubbleClass = `ai-reach-bubble ai-reach-bubble-${bubbleType}${isHidden ? ' ai-reach-bubble-hidden' : ''}`;
 
