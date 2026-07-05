@@ -1,0 +1,66 @@
+vercel.json
+  s_9b92c8a0288cb6::t_85e6780441738b 1-11 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4a864d740afea3d56484c1","tool_type":"agent","tool_id":"Write","line_ranges":[{"Range":[1,11]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f8135385779c138c531e0132b7354c1ce2531966",
+  "prompts": {},
+  "sessions": {
+    "s_9b92c8a0288cb6": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4a7cd4740afea3d56483a8",
+        "model": "Doubao-Seed-2.1-Turbo__dev"
+      },
+      "human_author": "AI Assistant Dev <dev@ai-assistant.local>"
+    }
+  },
+  "attestation_metadata": {
+    "vercel.json": [
+      {
+        "hash": "s_9b92c8a0288cb6::t_85e6780441738b",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              11
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4a864d740afea3d56484c1",
+            "tool_type": "agent",
+            "tool_id": "Write",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  11
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_9b92c8a0288cb6": {
+      "tool": "trae",
+      "conversation_id": "6a4a7cd4740afea3d56483a8",
+      "session_id": "6a4a7cd4740afea3d56483a8",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_9b92c8a0288cb6::t_85e6780441738b": {
+      "tool": "trae",
+      "conversation_id": "6a4a7cd4740afea3d56483a8",
+      "session_id": "6a4a7cd4740afea3d56483a8",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
