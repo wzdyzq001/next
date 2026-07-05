@@ -1,0 +1,66 @@
+docs/AI智能助手V3.0产品需求文档.md
+  s_9b92c8a0288cb6::t_215ebef1d05e14 1-750 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4a7f68740afea3d5648484","tool_type":"agent","tool_id":"Write","line_ranges":[{"Range":[1,750]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "069efcee7590cf10d2af4006aa9c61336d1d0273",
+  "prompts": {},
+  "sessions": {
+    "s_9b92c8a0288cb6": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4a7cd4740afea3d56483a8",
+        "model": "Doubao-Seed-2.1-Turbo__dev"
+      },
+      "human_author": "AI Assistant Dev <dev@ai-assistant.local>"
+    }
+  },
+  "attestation_metadata": {
+    "docs/AI智能助手V3.0产品需求文档.md": [
+      {
+        "hash": "s_9b92c8a0288cb6::t_215ebef1d05e14",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              750
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4a7f68740afea3d5648484",
+            "tool_type": "agent",
+            "tool_id": "Write",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  750
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_9b92c8a0288cb6": {
+      "tool": "trae",
+      "conversation_id": "6a4a7cd4740afea3d56483a8",
+      "session_id": "6a4a7cd4740afea3d56483a8",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_9b92c8a0288cb6::t_215ebef1d05e14": {
+      "tool": "trae",
+      "conversation_id": "6a4a7cd4740afea3d56483a8",
+      "session_id": "6a4a7cd4740afea3d56483a8",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
