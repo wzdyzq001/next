@@ -565,4 +565,9 @@ export type MessageAction =
       label: '订单使用提醒';
       kind: 'set_redeem_reminder';
       orderId: string;
+    }
+  | {
+      label: string;
+      kind: 'view_redeem_reminder';
+      orderId?: string;
     };
