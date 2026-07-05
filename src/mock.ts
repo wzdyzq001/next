@@ -1519,9 +1519,16 @@ const colorMap: Record<string, any> = {
   '预订确认中': 'blue',
   '预订成功': 'green',
   '待接单': 'orange',
+  '待商家接单': 'orange',
+  '商家已接单': 'blue',
   '制作中': 'blue',
-  '配送中': 'blue',
+  '商家备餐中': 'blue',
   '待取餐': 'blue',
+  '待骑手取餐': 'blue',
+  '配送中': 'blue',
+  '已取餐': 'green',
+  '已送达': 'green',
+  '已核销': 'green',
   '已入住': 'green',
   '已入园': 'green',
   '待出行': 'green',
@@ -1575,18 +1582,12 @@ export const ORDER_LIST: OrderListItem[] = [
   gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款申请中', colorMap['退款申请中'], '🥩', undefined, undefined, undefined, ['code']),
   gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款成功', colorMap['退款成功'], '🥩', undefined, undefined, undefined, ['code']),
   gen('麦当劳(知春路店)', '双人牛排套餐（仅券码）', 'food', '退款失败', colorMap['退款失败'], '🥩', undefined, undefined, undefined, ['code']),
-  gen('海底捞(知春路店)', '番茄锅底双人套餐（仅券码）', 'food', '制作中', colorMap['制作中'], '🍲', undefined, undefined, undefined, ['code']),
 
   // ===== 补充：餐饮-仅点单(order) - 其他状态 =====
-  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '待接单', colorMap['待接单'], '☕', undefined, undefined, undefined, ['order']),
-  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '制作中', colorMap['制作中'], '☕', undefined, undefined, undefined, ['order']),
-  gen('瑞幸咖啡(知春路店)', '生椰拿铁大杯（仅点单）', 'food', '待取餐', colorMap['待取餐'], '☕', undefined, undefined, undefined, ['order']),
+  // （点单子履约状态统一由"子履约状态全量覆盖"区块提供，避免重复）
 
   // ===== 补充：餐饮-仅配送(delivery) - 其他状态 =====
   gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '待支付', colorMap['待支付'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
-  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '待接单', colorMap['待接单'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
-  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '制作中', colorMap['制作中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
-  gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '配送中', colorMap['配送中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
   gen('麦当劳(知春路店)', '巨无霸套餐（仅配送）', 'food', '交易完成', colorMap['交易完成'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
 
   // ===== 补充：酒店 - 已入住 =====
@@ -1603,4 +1604,27 @@ export const ORDER_LIST: OrderListItem[] = [
 
   // ===== 补充：综合娱乐(fun) - 订单取消 =====
   gen('星聚会KTV', '3小时欢唱套餐', 'fun', '订单取消', colorMap['订单取消'], '🎤'),
+
+  // ============================================================
+  // 餐饮交易完成订单 - 子履约状态全量覆盖（12种组合）
+  // 所有订单主状态均为「交易完成」，通过 statusText + fulfillmentModes 识别子状态
+  // ============================================================
+
+  // ---- 自提（self_order）- 5种状态 ----
+  gen('瑞幸咖啡(科兴店)', '[自提] 生椰拿铁大杯 × 1', 'food', '待商家接单', colorMap['待商家接单'], '☕️', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(科兴店)', '[自提] 丝绒拿铁 + 抹茶可颂', 'food', '商家已接单', colorMap['商家已接单'], '☕️', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(科兴店)', '[自提] 燕麦拿铁 (热) × 2', 'food', '制作中', colorMap['制作中'], '☕️', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(科兴店)', '[自提] 橙C美式 × 1', 'food', '待取餐', colorMap['待取餐'], '☕️', undefined, undefined, undefined, ['order']),
+  gen('瑞幸咖啡(科兴店)', '[自提] 生椰拿铁 + 厚乳拿铁', 'food', '已取餐', colorMap['已取餐'], '☕️', undefined, undefined, undefined, ['order']),
+
+  // ---- 外卖配送（delivery）- 6种状态 ----
+  gen('麦当劳(知春路店)', '[配送] 巨无霸套餐 × 1', 'food', '待商家接单', colorMap['待商家接单'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '[配送] 双人分享桶', 'food', '商家已接单', colorMap['商家已接单'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '[配送] 麦辣鸡腿堡套餐', 'food', '商家备餐中', colorMap['商家备餐中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '[配送] 全家桶套餐', 'food', '待骑手取餐', colorMap['待骑手取餐'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '[配送] 板烧鸡腿堡套餐', 'food', '配送中', colorMap['配送中'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+  gen('麦当劳(知春路店)', '[配送] 麦旋风 + 薯条', 'food', '已送达', colorMap['已送达'], '🍔', undefined, undefined, undefined, ['delivery'], '紫金数码科技园4号楼东区'),
+
+  // ---- 券码核销（voucher）- 1种状态 ----
+  gen('海底捞(知春路店)', '[券码] 番茄锅底双人套餐', 'food', '已核销', colorMap['已核销'], '🍲', undefined, undefined, undefined, ['code']),
 ];

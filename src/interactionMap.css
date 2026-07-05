@@ -474,6 +474,9 @@
   flex-shrink: 0;
   white-space: nowrap;
   line-height: 1.4;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .imap-order-list-status.status-green {
@@ -509,6 +512,10 @@
   justify-content: space-between;
   align-items: center;
   margin-top: 2px;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .imap-order-list-code {
@@ -516,12 +523,121 @@
   font-weight: 600;
   color: #ff7d00;
   letter-spacing: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
 .imap-order-list-price {
   display: flex;
   align-items: baseline;
   gap: 1px;
+  flex-shrink: 0;
+}
+
+.imap-order-list-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 4px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.imap-order-list-progress-row:hover {
+  background: #f8fafc;
+}
+
+.imap-order-list-progress-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.imap-order-list-progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #165dff;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.15);
+}
+
+.imap-order-list-progress-text {
+  font-size: 12px;
+  color: #1f2937;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.imap-order-list-progress-arrow {
+  font-size: 12px;
+  color: #9ca3af;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.imap-order-list-progress-expanded {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.imap-order-list-progress-expanded .oc-card-extension {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.imap-order-list-progress-expanded .oc-progress-header {
+  margin-bottom: 12px;
+}
+
+.imap-order-list-progress-expanded .oc-progress-title {
+  font-size: 13px;
+}
+
+.imap-order-list-progress-expanded .oc-progress-estimate {
+  font-size: 11px;
+  padding: 3px 8px;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.imap-order-list-progress-expanded .oc-step-label {
+  font-size: 10px;
+}
+
+.imap-order-list-progress-expanded .oc-step-time {
+  font-size: 9px;
+}
+
+.imap-order-list-progress-expanded .oc-info-item {
+  font-size: 12px;
 }
 
 .imap-order-list-progress {
@@ -633,19 +749,71 @@
 
 .imap-step-text p {
   margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.imap-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 75%;
+  align-items: flex-start;
+}
+
+.imap-step.user .imap-step-content {
+  align-items: flex-end;
+}
+
+.imap-text-bubble {
+  max-width: 100%;
+  min-width: fit-content;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  word-break: normal;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.imap-text-bubble.assistant {
+  background: white;
+  color: #1e293b;
+  border-bottom-left-radius: 4px;
+}
+
+.imap-text-bubble.assistant p {
+  color: #1e293b;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.imap-text-bubble.user {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.imap-text-bubble.user p {
+  color: white;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.6;
 }
 
 .imap-quick-replies {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.imap-step.user .imap-quick-replies {
-  border-top-color: rgba(255, 255, 255, 0.2);
+  justify-content: flex-end;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  flex-direction: row-reverse;
 }
 
 .imap-quick-reply {
@@ -658,12 +826,29 @@
   cursor: pointer;
   transition: all 0.15s ease;
   border: 1px solid #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .imap-quick-reply:hover {
   background: #dbeafe;
   border-color: #bfdbfe;
   transform: translateY(-1px);
+}
+
+.imap-quick-reply:first-child {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  font-weight: 600;
+}
+
+.imap-quick-reply:first-child:hover {
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .imap-order-card {

@@ -8,7 +8,7 @@ interface OrderCardExtensionProps {
 }
 
 export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, defaultExpanded = false }) => {
-  const [expandedDelivery, setExpandedDelivery] = useState<string | null>(defaultExpanded ? order.id : null);
+  const [expanded, setExpanded] = useState<string | null>(defaultExpanded ? order.id : null);
   const ext = order.extension;
 
   if (!ext || ext.type === 'payment_countdown') {
@@ -16,7 +16,8 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
   }
 
   const isDeliveryCompleted = ext.type === 'delivery_completed';
-  const isDeliveryExpanded = expandedDelivery === order.id;
+  const isPickupCompleted = ext.type === 'pickup_completed';
+  const isExpanded = expanded === order.id;
 
   const renderProgressIcon = () => {
     if (ext.title.includes('配送')) {
@@ -92,7 +93,7 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
               </svg>
             </button>
             <button className="oc-hotel-icon-btn" title="电话">
-              <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+              <svg className="oc-hotel-phone-icon" viewBox="0 0 16 16" fill="none">
                 <path d="M3.5 2.5L5.5 2L7 5.5L5.5 6.5C6 7.5 7 8.5 8 9.5C9 10.5 10 11 11 11.5L12 10L15 11.5V14C15 14.5 14.5 15 14 15C6 15 1.5 10.5 1.5 3C1.5 2.5 2 2.5 2.5 2.5Z" fill="#4e5969"/>
               </svg>
             </button>
@@ -127,7 +128,7 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
               </svg>
             </button>
             <button className="oc-hotel-icon-btn" title="电话">
-              <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+              <svg className="oc-hotel-phone-icon" viewBox="0 0 16 16" fill="none">
                 <path d="M3.5 2.5L5.5 2L7 5.5L5.5 6.5C6 7.5 7 8.5 8 9.5C9 10.5 10 11 11 11.5L12 10L15 11.5V14C15 14.5 14.5 15 14 15C6 15 1.5 10.5 1.5 3C1.5 2.5 2 2.5 2.5 2.5Z" fill="#4e5969"/>
               </svg>
             </button>
@@ -148,6 +149,31 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
       <div className="oc-refund-status">
         <span className="oc-refund-status-text">{statusText}</span>
         <span className="oc-refund-status-amount">{refundAmount}</span>
+      </div>
+    );
+  };
+
+  const renderRiderInfo = () => {
+    if (!ext.riderInfo) return null;
+    return (
+      <div className="oc-rider-info">
+        <div className="oc-rider-left">
+          <span className="oc-rider-avatar">🚴</span>
+          <span className="oc-rider-name">{ext.riderInfo.name}</span>
+        </div>
+        {ext.riderInfo.phone && (
+          <button
+            className="oc-rider-phone-btn"
+            title="联系骑手"
+            onClick={() => {
+              window.location.href = `tel:${ext.riderInfo!.phone}`;
+            }}
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+              <path d="M3.5 2.5L5.5 2L7 5.5L5.5 6.5C6 7.5 7 8.5 8 9.5C9 10.5 10 11 11 11.5L12 10L15 11.5V14C15 14.5 14.5 15 14 15C6 15 1.5 10.5 1.5 3C1.5 2.5 2 2.5 2.5 2.5Z" fill="#4e5969"/>
+            </svg>
+          </button>
+        )}
       </div>
     );
   };
@@ -185,19 +211,55 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
       {isDeliveryCompleted ? (
         <div
           className="oc-delivery-completed"
-          onClick={() => setExpandedDelivery(isDeliveryExpanded ? null : order.id)}
+          onClick={() => setExpanded(isExpanded ? null : order.id)}
         >
           <div className="oc-delivery-summary">
             <span className="oc-delivery-summary-text">{ext.summary}</span>
             <span className="oc-delivery-arrow">
-              {isDeliveryExpanded ? '∧' : '∨'}
+              {isExpanded ? '∧' : '∨'}
             </span>
           </div>
-          {isDeliveryExpanded && ext.steps && (
+          {isExpanded && ext.steps && (
             <div className="oc-delivery-detail">
               {renderSteps()}
               {ext.info && (
                 <div className="oc-delivery-info">
+                  {ext.info.map((item, i) => (
+                    <div key={i} className="oc-info-item">
+                      <span className="oc-info-label">{item.label}</span>
+                      <span className="oc-info-value">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : isPickupCompleted ? (
+        <div
+          className={`oc-pickup-completed ${isExpanded ? 'expanded' : 'collapsed'}`}
+          onClick={() => setExpanded(isExpanded ? null : order.id)}
+        >
+          <div className="oc-pickup-summary">
+            <div className="oc-pickup-summary-left">
+              {ext.pickupCode && (
+                <span className="oc-pickup-summary-code">{ext.pickupCode}</span>
+              )}
+            </div>
+            <div className="oc-pickup-summary-right">
+              <span className="oc-pickup-summary-text">{ext.summary?.replace(/^取餐码\s+\S+\s*·\s*/, '')}</span>
+              <span className="oc-pickup-arrow-icon">
+                <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+          {isExpanded && (
+            <div className="oc-pickup-detail">
+              {ext.steps && renderSteps()}
+              {ext.info && (
+                <div className="oc-pickup-info">
                   {ext.info.map((item, i) => (
                     <div key={i} className="oc-info-item">
                       <span className="oc-info-label">{item.label}</span>
@@ -236,6 +298,7 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
             )}
           </div>
           {renderSteps()}
+          {renderRiderInfo()}
           {renderInfoList()}
         </>
       ) : null}

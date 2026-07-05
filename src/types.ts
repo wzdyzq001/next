@@ -357,6 +357,8 @@ export interface RedeemReminder {
   remindAt: number;
   createdAt: number;
   status: 'active' | 'canceled' | 'triggered';
+  productName?: string;
+  validDate?: string;
 }
 
 /** 订单数据模型 */

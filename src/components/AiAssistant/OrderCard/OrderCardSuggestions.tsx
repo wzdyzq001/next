@@ -8,6 +8,7 @@ interface OrderCardSuggestionsProps {
 
 export const OrderCardSuggestions: React.FC<OrderCardSuggestionsProps> = ({ suggestions, onSuggestionClick }) => {
   const listRef = useRef<HTMLDivElement>(null);
+  const isMouseDownRef = useRef(false);
   const isDraggingRef = useRef(false);
   const hasDraggedRef = useRef(false);
   const startXRef = useRef(0);
@@ -16,34 +17,36 @@ export const OrderCardSuggestions: React.FC<OrderCardSuggestionsProps> = ({ sugg
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!listRef.current) return;
+    isMouseDownRef.current = true;
     isDraggingRef.current = false;
     hasDraggedRef.current = false;
     startXRef.current = e.pageX;
     startScrollLeftRef.current = listRef.current.scrollLeft;
-    setIsDragging(true);
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDraggingRef.current && listRef.current) {
-      isDraggingRef.current = true;
-    }
-    if (!listRef.current) return;
+    if (!isMouseDownRef.current || !listRef.current) return;
     const walk = e.pageX - startXRef.current;
     if (Math.abs(walk) > 3) {
+      if (!isDraggingRef.current) {
+        isDraggingRef.current = true;
+        setIsDragging(true);
+      }
       hasDraggedRef.current = true;
+      listRef.current.scrollLeft = startScrollLeftRef.current - walk;
     }
-    listRef.current.scrollLeft = startScrollLeftRef.current - walk;
   }, []);
 
   const handleMouseUp = useCallback(() => {
+    isMouseDownRef.current = false;
     setIsDragging(false);
     setTimeout(() => {
       isDraggingRef.current = false;
-      hasDraggedRef.current = false;
     }, 0);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    isMouseDownRef.current = false;
     setIsDragging(false);
     isDraggingRef.current = false;
   }, []);
@@ -71,7 +74,9 @@ export const OrderCardSuggestions: React.FC<OrderCardSuggestionsProps> = ({ sugg
               key={i}
               className="oc-suggestion-btn"
               onClick={(e) => {
-                if (hasDraggedRef.current) {
+                const dragged = hasDraggedRef.current;
+                hasDraggedRef.current = false;
+                if (dragged) {
                   e.preventDefault();
                   e.stopPropagation();
                   return;

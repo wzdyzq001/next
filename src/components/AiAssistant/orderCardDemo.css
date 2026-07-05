@@ -608,6 +608,42 @@
   border-top: 1px solid #f2f3f5;
 }
 
+.demo-pickup-completed {
+  cursor: pointer;
+  user-select: none;
+}
+
+.demo-pickup-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.demo-pickup-summary-text {
+  flex: 1;
+  color: #86909c;
+  font-size: 13px;
+  text-align: left;
+}
+
+.demo-pickup-arrow {
+  font-size: 12px;
+  color: #86909c;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.demo-pickup-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f2f3f5;
+}
+
 .demo-delivery-info {
   display: flex;
   flex-wrap: wrap;
@@ -1477,4 +1513,44 @@
 .demo-hotel-tag.default {
   background: #f2f3f5;
   color: #4e5969;
+}
+
+/* ========== 餐饮两级状态筛选 ========== */
+
+.demo-filter-status-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.demo-filter-substatus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f7f8fa;
+  border-radius: 8px;
+}
+
+.demo-filter-substatus-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.demo-filter-substatus-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #86909c;
+  font-weight: 500;
+  line-height: 22px;
+  width: 56px;
+}
+
+.demo-filter-chip.small {
+  padding: 2px 10px;
+  font-size: 11px;
+  line-height: 1.6;
+  border-radius: 10px;
 }

@@ -50,7 +50,7 @@ function handlePickupWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '您咨询的订单不是餐饮订单，没有取餐码，是否要咨询其他订单？',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -68,7 +68,7 @@ function handlePickupWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '该订单已取消，没有取餐码。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -86,7 +86,7 @@ function handlePickupWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '该订单已退款，没有取餐码。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -167,7 +167,7 @@ function handlePickupWithContext(
             role: 'assistant',
             contentType: 'text',
             content: '该订单为到店券码核销订单，没有取餐码。',
-            quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+            quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
           },
         ],
         newDialogState: {
@@ -268,7 +268,7 @@ function handlePickupWithContext(
         role: 'assistant',
         contentType: 'text',
         content: '暂时没有找到该订单的取餐码信息。',
-        quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+        quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
       },
     ],
     newDialogState: {
@@ -282,7 +282,7 @@ function handlePickupWithContext(
 function handlePickupWithoutContext(context: NluContext): NluResponse {
   const { dialogState } = context;
 
-  const pickupOrders = [ORDER_FOOD_PREPARING, ORDER_FOOD_PREPARING_2];
+  const pickupOrders = [ORDER_FOOD_PREPARING, ORDER_FOOD_PREPARING_2, ORDER_FOOD_WAITING_PICKUP];
 
   if (pickupOrders.length === 0) {
     return {
@@ -291,7 +291,7 @@ function handlePickupWithoutContext(context: NluContext): NluResponse {
           role: 'assistant',
           contentType: 'text',
           content: '没有找到待取餐订单。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -334,7 +334,14 @@ function handlePickupWithoutContext(context: NluContext): NluResponse {
       {
         role: 'assistant',
         contentType: 'text',
-        content: '你有多个待取餐订单，请选择要查看的订单',
+        content: `帮你找到 ${pickupOrders.length} 个待取餐订单：`,
+        delay: 300,
+      },
+      {
+        role: 'assistant',
+        contentType: 'text',
+        content: '',
+        orderList: pickupOrders,
       },
     ],
     newDialogState: {

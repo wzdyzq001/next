@@ -23,6 +23,10 @@ export function handleDeliveryIntent(
     return handleReserveInProgress(context);
   }
 
+  if (dialogState.currentStep === 'select_order') {
+    return handleSelectDeliveryOrder(message, context);
+  }
+
   if (orderCard) {
     return handleDeliveryWithContext(orderCard, context);
   }
@@ -46,7 +50,7 @@ function handleDeliveryWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '您咨询的订单不是餐饮配送订单，暂时没有配送进度。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -64,7 +68,7 @@ function handleDeliveryWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '该订单已取消，没有配送进度。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -82,7 +86,7 @@ function handleDeliveryWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '该订单已退款，没有配送进度。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -163,7 +167,7 @@ function handleDeliveryWithContext(
             role: 'assistant',
             contentType: 'text',
             content: '该订单为到店券码核销订单，没有配送进度。',
-            quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+            quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
           },
         ],
         newDialogState: {
@@ -269,7 +273,7 @@ function handleDeliveryWithContext(
         role: 'assistant',
         contentType: 'text',
         content: '暂时没有找到该订单的配送进度信息。',
-        quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+        quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
       },
     ],
     newDialogState: {
@@ -292,7 +296,7 @@ function handleDeliveryWithoutContext(context: NluContext): NluResponse {
           role: 'assistant',
           contentType: 'text',
           content: '没有找到正在配送中的订单。',
-          quickReplies: [createQuickReply('qr-select-order', '选择订单')],
+          quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
         },
       ],
       newDialogState: {
@@ -335,7 +339,14 @@ function handleDeliveryWithoutContext(context: NluContext): NluResponse {
       {
         role: 'assistant',
         contentType: 'text',
-        content: '你有多个配送中的订单，请选择要查看的订单',
+        content: `帮你找到 ${deliveryOrders.length} 个配送中的订单：`,
+        delay: 300,
+      },
+      {
+        role: 'assistant',
+        contentType: 'text',
+        content: '',
+        orderList: deliveryOrders,
       },
     ],
     newDialogState: {
@@ -343,6 +354,68 @@ function handleDeliveryWithoutContext(context: NluContext): NluResponse {
       currentIntent: 'delivery',
       currentStep: 'select_order',
       data: { orderList: deliveryOrders },
+    },
+  };
+}
+
+function handleSelectDeliveryOrder(
+  message: string,
+  context: NluContext
+): NluResponse {
+  const { dialogState } = context;
+  const orderList = (dialogState.data?.orderList as any[]) || [];
+
+  let selectedIndex = -1;
+
+  const numMatch = message.match(/第([一二三四五六七八九十\d]+)个/);
+  if (numMatch) {
+    const numStr = numMatch[1];
+    const chineseNums: Record<string, number> = {
+      '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+      '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+    };
+    if (chineseNums[numStr]) {
+      selectedIndex = chineseNums[numStr] - 1;
+    } else if (/\d+/.test(numStr)) {
+      selectedIndex = parseInt(numStr, 10) - 1;
+    }
+  }
+
+  const digitMatch = message.match(/^[1-9]\d*$/);
+  if (digitMatch && selectedIndex === -1) {
+    selectedIndex = parseInt(message, 10) - 1;
+  }
+
+  if (selectedIndex === -1) {
+    for (let i = 0; i < orderList.length; i++) {
+      const order = orderList[i];
+      if (message.includes(order.storeName) || message.includes(order.productName)) {
+        selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  if (selectedIndex >= 0 && selectedIndex < orderList.length) {
+    const selectedOrder = orderList[selectedIndex];
+    return handleDeliveryWithContext(selectedOrder, context);
+  }
+
+  return {
+    messages: [
+      {
+        role: 'assistant',
+        contentType: 'text',
+        content: '请告诉我您想查看第几个订单，或者告诉我商家名称~',
+        quickReplies: orderList.map((order, index) =>
+          createQuickReply(`qr-deliver-${index + 1}`, `${index + 1}. ${order.storeName}`)
+        ),
+      },
+    ],
+    newDialogState: {
+      ...dialogState,
+      currentIntent: 'delivery',
+      currentStep: 'select_order',
     },
   };
 }

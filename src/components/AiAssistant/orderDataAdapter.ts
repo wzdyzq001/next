@@ -1,6 +1,17 @@
 import type { OrderData, OrderCategory, OrderStatus } from '../../types';
 import type { OrderCardData } from './OrderCard/orderCardTypes';
 import type { OrderListItem } from '../../types';
+import {
+  inferFoodSubStatusFromText,
+  inferMainStatusFromText,
+  inferFulfillmentTypeFromModes,
+  getFoodSubStatusLabel,
+  getMainStatusLabel,
+  getMainStatusColor,
+  getFoodSubStatusMainStatus,
+  isFoodSubStatus,
+  getFoodSubStatusFulfillmentType,
+} from './orderStatusMapping';
 
 const CATEGORY_LABEL_MAP: Record<string, string> = {
   food: '餐饮',
@@ -347,9 +358,25 @@ function buildSuggestions(order: OrderData): string[] {
   }
 
   if (status === 'completed') {
-    suggestions.push('怎么开发票？');
-    suggestions.push('再来一单');
-    suggestions.push('去评价');
+    if (category === 'food' && order.foodSubOrder) {
+      if (order.foodSubOrder.type === 'delivery') {
+        suggestions.push('漏送错送怎么办');
+        suggestions.push('餐品有问题怎么办');
+        suggestions.push('再次购买');
+      } else if (order.foodSubOrder.type === 'self_order') {
+        suggestions.push('餐品有问题怎么办');
+        suggestions.push('怎么开发票');
+        suggestions.push('再次购买');
+      } else {
+        suggestions.push('味道怎么样');
+        suggestions.push('怎么开发票');
+        suggestions.push('再来一单');
+      }
+    } else {
+      suggestions.push('怎么开发票？');
+      suggestions.push('再来一单');
+      suggestions.push('去评价');
+    }
     return suggestions;
   }
 
@@ -386,7 +413,33 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
   const productType = mapProductType(order);
   const orderStatus = ORDER_STATUS_MAP[order.status] || 'unused';
   const statusText = STATUS_TEXT_MAP[order.status] || order.status;
-  const statusColor = STATUS_COLOR_MAP[order.status] || 'gray';
+  const rawStatusColor = STATUS_COLOR_MAP[order.status] || 'gray';
+
+  const mainStatus = inferMainStatusFromText(statusText, category as any);
+  const mainStatusLabel = getMainStatusLabel(mainStatus);
+  const mainStatusColor = getMainStatusColor(mainStatus);
+
+  let subStatus: string | undefined;
+  let subStatusLabel: string | undefined;
+  let fulfillmentType: 'self_order' | 'delivery' | 'voucher' | undefined;
+
+  if (category === 'food' && mainStatus === 'redeemed') {
+    const modes: Array<'code' | 'order' | 'delivery'> = [];
+    if (order.supportedRedeemMethods?.includes('voucher')) modes.push('code');
+    if (order.supportedRedeemMethods?.includes('self_order')) modes.push('order');
+    if (order.supportedRedeemMethods?.includes('delivery')) modes.push('delivery');
+
+    const inferredSubStatus = inferFoodSubStatusFromText(statusText, modes);
+    if (inferredSubStatus) {
+      subStatus = inferredSubStatus;
+      subStatusLabel = getFoodSubStatusLabel(inferredSubStatus);
+      fulfillmentType = getFoodSubStatusFulfillmentType(inferredSubStatus);
+    } else if (order.foodSubOrder) {
+      fulfillmentType = order.foodSubOrder.type;
+    } else if (order.redeemMethod && order.redeemMethod !== 'none') {
+      fulfillmentType = order.redeemMethod as any;
+    }
+  }
 
   const thumbnail = order.productImage && isEmoji(order.productImage)
     ? order.productImage
@@ -402,6 +455,11 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
     categoryLabel: CATEGORY_LABEL_MAP[category] || category,
     productType,
     productTypeLabel: PRODUCT_TYPE_LABEL_MAP[productType] || productType,
+    fulfillmentType,
+    mainStatus,
+    mainStatusLabel,
+    subStatus,
+    subStatusLabel,
     orderStatus,
     orderStatusLabel: statusText,
     productName: order.itemSummary,
@@ -410,8 +468,8 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
     tags: order.tags || [],
     storeName: order.store,
     distance: order.distance || '',
-    statusText,
-    statusColor,
+    statusText: mainStatusLabel,
+    statusColor: mainStatusColor,
     extension,
     actions,
     suggestions,
@@ -428,8 +486,12 @@ const LIST_ITEM_STATUS_MAP: Record<string, OrderCardData['orderStatus']> = {
   '预订确认中': 'booking_confirming',
   '预订成功': 'booked',
   '待接单': 'pending_accept',
+  '待商家接单': 'pending_accept',
+  '商家已接单': 'preparing',
+  '商家备餐中': 'preparing',
   '制作中': 'preparing',
   '配送中': 'delivering',
+  '待骑手取餐': 'delivering',
   '待取餐': 'waiting_pickup',
   '已取餐': 'picked_up',
   '已送达': 'completed',
@@ -627,7 +689,7 @@ function buildListItemExtension(item: OrderListItem): OrderCardData['extension']
     };
   }
 
-  if (statusText === '待接单') {
+  if (statusText === '待接单' || statusText === '待商家接单') {
     if (item.fulfillmentModes?.includes('delivery')) {
       return {
         type: 'progress',
@@ -685,15 +747,106 @@ function buildListItemExtension(item: OrderListItem): OrderCardData['extension']
     };
   }
 
+  if (statusText === '商家已接单') {
+    if (item.fulfillmentModes?.includes('delivery')) {
+      return {
+        type: 'progress',
+        title: '配送进度',
+        estimatedTime: '预计15分钟送达',
+        steps: [
+          { label: '下单成功', state: 'done', time: '11:20' },
+          { label: '商家已接单', state: 'done', time: '11:22' },
+          { label: '商家备餐中', state: 'active', time: '11:25' },
+          { label: '骑手取餐', state: 'pending' },
+          { label: '配送中', state: 'pending' },
+          { label: '已送达', state: 'pending' },
+        ],
+      };
+    }
+    return {
+      type: 'progress',
+      title: '取餐进度',
+      estimatedTime: '预计8分钟后可取',
+      steps: [
+        { label: '下单成功', state: 'done', time: '10:02' },
+        { label: '商家已接单', state: 'done', time: '10:03' },
+        { label: '制作中', state: 'active', time: '10:05' },
+        { label: '待取餐', state: 'pending' },
+        { label: '已取餐', state: 'pending' },
+      ],
+    };
+  }
+
+  if (statusText === '商家备餐中') {
+    return {
+      type: 'progress',
+      title: '配送进度',
+      estimatedTime: '预计12分钟送达',
+      steps: [
+        { label: '下单成功', state: 'done', time: '11:20' },
+        { label: '商家已接单', state: 'done', time: '11:22' },
+        { label: '商家备餐中', state: 'active', time: '11:25' },
+        { label: '骑手取餐', state: 'pending' },
+        { label: '配送中', state: 'pending' },
+        { label: '已送达', state: 'pending' },
+      ],
+    };
+  }
+
+  if (statusText === '待骑手取餐') {
+    return {
+      type: 'progress',
+      title: '配送进度',
+      estimatedTime: '预计12分钟送达',
+      steps: [
+        { label: '下单成功', state: 'done', time: '11:20' },
+        { label: '商家已接单', state: 'done', time: '11:22' },
+        { label: '商家备餐中', state: 'done', time: '11:25' },
+        { label: '待骑手取餐', state: 'active', time: '11:35' },
+        { label: '配送中', state: 'pending' },
+        { label: '已送达', state: 'pending' },
+      ],
+    };
+  }
+
   if (statusText === '待取餐') {
     return {
-      type: 'pickup_code',
+      type: 'pickup_completed',
       title: '取餐信息',
+      summary: '已完成制作请尽快取餐',
       pickupCode: 'A088',
-      pickupTime: '约5分钟后可取餐',
+      pickupTime: '待取餐',
       info: [
         { label: '取餐号', value: 'A088' },
-        { label: '预计取餐', value: '约5分钟后可取餐' },
+        { label: '门店', value: '瑞幸咖啡(科兴店)' },
+      ],
+      steps: [
+        { label: '下单成功', state: 'done' as const, time: '10:02' },
+        { label: '商家已接单', state: 'done' as const, time: '10:03' },
+        { label: '制作中', state: 'done' as const, time: '10:05' },
+        { label: '已完成', state: 'active' as const, time: '10:12' },
+        { label: '待取餐', state: 'pending' as const },
+      ],
+    };
+  }
+
+  if (statusText === '已取餐') {
+    return {
+      type: 'pickup_completed',
+      title: '取餐信息',
+      summary: '已取餐，祝用餐愉快',
+      pickupCode: 'A066',
+      pickupTime: '已取餐',
+      info: [
+        { label: '取餐号', value: 'A066' },
+        { label: '取餐时间', value: '10:28' },
+      ],
+      steps: [
+        { label: '下单成功', state: 'done' as const, time: '10:02' },
+        { label: '商家已接单', state: 'done' as const, time: '10:03' },
+        { label: '制作中', state: 'done' as const, time: '10:05' },
+        { label: '待取餐', state: 'done' as const, time: '10:15' },
+        { label: '已取餐', state: 'done' as const, time: '10:28' },
       ],
     };
   }
@@ -1040,7 +1193,7 @@ function buildListItemActions(item: OrderListItem): OrderCardData['actions'] {
     return actions;
   }
 
-  if (statusText === '待接单' || statusText === '制作中' || statusText === '配送中' || statusText === '待取餐' || statusText === '已取餐') {
+  if (statusText === '待接单' || statusText === '待商家接单' || statusText === '制作中' || statusText === '配送中' || statusText === '待取餐' || statusText === '已取餐') {
     return actions;
   }
 
@@ -1198,7 +1351,7 @@ function buildListItemSuggestions(item: OrderListItem): string[] {
     return suggestions;
   }
 
-  if (statusText === '待接单') {
+  if (statusText === '待接单' || statusText === '待商家接单') {
     suggestions.push('多久能接单？');
     suggestions.push('可以取消吗？');
     suggestions.push('怎么催单？');
@@ -1212,10 +1365,52 @@ function buildListItemSuggestions(item: OrderListItem): string[] {
     return suggestions;
   }
 
+  if (statusText === '商家已接单') {
+    suggestions.push('多久能送到？');
+    suggestions.push('可以取消吗？');
+    suggestions.push('帮我催一下');
+    return suggestions;
+  }
+
+  if (statusText === '商家备餐中') {
+    suggestions.push('还需要等多久？');
+    suggestions.push('帮我催一下');
+    suggestions.push('可以取消吗？');
+    return suggestions;
+  }
+
+  if (statusText === '待骑手取餐') {
+    suggestions.push('骑手到哪了？');
+    suggestions.push('还有多久到？');
+    suggestions.push('可以改地址吗？');
+    return suggestions;
+  }
+
   if (statusText === '待取餐') {
     suggestions.push('门店在哪？');
     suggestions.push('可以改配送吗？');
     suggestions.push('过期能退吗？');
+    return suggestions;
+  }
+
+  if (statusText === '已取餐') {
+    suggestions.push('餐品有问题怎么办');
+    suggestions.push('怎么开发票');
+    suggestions.push('再次购买');
+    return suggestions;
+  }
+
+  if (statusText === '已送达') {
+    suggestions.push('漏送错送怎么办');
+    suggestions.push('餐品有问题怎么办');
+    suggestions.push('再次购买');
+    return suggestions;
+  }
+
+  if (statusText === '已核销') {
+    suggestions.push('味道怎么样');
+    suggestions.push('怎么开发票');
+    suggestions.push('再来一单');
     return suggestions;
   }
 
@@ -1345,6 +1540,32 @@ export function convertOrderListItemToCardData(item: OrderListItem): OrderCardDa
   const statusText = item.statusText;
   const statusColor = item.statusColor;
 
+  const mainStatus = inferMainStatusFromText(statusText, category as any);
+  const mainStatusLabel = getMainStatusLabel(mainStatus);
+  const mainStatusColor = getMainStatusColor(mainStatus);
+
+  let subStatus: string | undefined;
+  let subStatusLabel: string | undefined;
+  let fulfillmentType: 'self_order' | 'delivery' | 'voucher' | undefined;
+
+  if (category === 'food' && mainStatus === 'redeemed') {
+    const inferredSubStatus = inferFoodSubStatusFromText(statusText, item.fulfillmentModes);
+    if (inferredSubStatus) {
+      subStatus = inferredSubStatus;
+      subStatusLabel = getFoodSubStatusLabel(inferredSubStatus);
+      fulfillmentType = getFoodSubStatusFulfillmentType(inferredSubStatus);
+    } else {
+      const inferredFulfillment = inferFulfillmentTypeFromModes(item.fulfillmentModes, statusText);
+      if (inferredFulfillment) {
+        fulfillmentType = inferredFulfillment;
+        if (inferredFulfillment === 'voucher') {
+          subStatus = 'voucher_redeemed';
+          subStatusLabel = '已核销';
+        }
+      }
+    }
+  }
+
   const tags = buildListItemTags(item);
   const extension = buildListItemExtension(item);
   const actions = buildListItemActions(item);
@@ -1361,6 +1582,11 @@ export function convertOrderListItemToCardData(item: OrderListItem): OrderCardDa
     productType,
     productTypeLabel: PRODUCT_TYPE_LABEL_MAP[productType] || productType,
     redeemTypes,
+    fulfillmentType,
+    mainStatus,
+    mainStatusLabel,
+    subStatus,
+    subStatusLabel,
     orderStatus,
     orderStatusLabel: statusText,
     productName: item.product,
@@ -1369,8 +1595,8 @@ export function convertOrderListItemToCardData(item: OrderListItem): OrderCardDa
     tags,
     storeName: item.merchant,
     distance: '',
-    statusText,
-    statusColor,
+    statusText: mainStatusLabel,
+    statusColor: mainStatusColor,
     hideStoreLine,
     urgeReason,
     extension,

@@ -2,6 +2,7 @@ import type { MessageAction, RedeemReminder, OrderListItem } from '../../types';
 import type { OrderCardData } from './OrderCard/orderCardTypes';
 import type { FeatureCardData } from './FeatureCard/types';
 import type { ReservationInfoCardData } from './ReservationInfoCard';
+import type { ReachConfig } from './reach/types';
 
 export type OrderCategory = 'food' | 'hotel' | 'scenic' | 'general' | 'travel';
 
@@ -111,6 +112,12 @@ export interface BubbleConfig {
   priority: number;
 }
 
+export interface GuideMessageConfig {
+  text: string;
+  actions?: MessageAction[];
+  quickReplies?: GuidedQuestion[];
+}
+
 export type OverlayMode = 'minimized' | 'fullscreen' | 'closed';
 
 export type DegradeLevel = 'none' | 'L1' | 'L2' | 'L3';
@@ -122,11 +129,21 @@ export interface GuidedQuestion {
   priority: 0 | 1 | 2 | 3;
   category?: string;
   status?: string;
+  action?: 'open_order_selector' | 'open_reservation';
 }
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export type MessageContentType = 'text' | 'system_notice';
+
+export type QuickActionType = 'reservation' | 'reminder' | 'pickup_code' | 'delivery';
+
+export interface QuickAction {
+  id: string;
+  label: string;
+  icon?: string;
+  type: QuickActionType;
+}
 
 export interface ChatMessage {
   id: string;
@@ -134,10 +151,12 @@ export interface ChatMessage {
   contentType: MessageContentType;
   content?: string;
   quickReplies?: GuidedQuestion[];
+  quickActions?: QuickAction[];
   actions?: MessageAction[];
   redeemReminder?: RedeemReminder;
   reservationInfo?: ReservationInfoCardData;
   orderCard?: OrderCardData;
+  orderList?: OrderCardData[];
   featureCard?: FeatureCardData;
   timestamp: number;
   status?: 'sending' | 'sent' | 'error';
@@ -191,6 +210,7 @@ export interface AiAssistantState {
   reminderSheetOrderId: string | null;
   reminderSheetProductName?: string;
   reminderSheetValidDate?: string;
+  reminderSheetInitialRemindAt?: number;
   reservationPanelOpen: boolean;
   reservationStoreName: string;
   reservationBusinessHours?: string;
@@ -198,10 +218,15 @@ export interface AiAssistantState {
   voucherSheetStoreName?: string;
   voucherSheetProductName?: string;
   voucherSheetVoucherCode?: string;
+  reachPayload?: {
+    reachId: string;
+    config: ReachConfig;
+    orderId: string;
+  } | null;
 }
 
 export interface AiAssistantContextValue extends AiAssistantState {
-  openAssistant: (orderId?: string, source?: EntrySource) => void;
+  openAssistant: (orderId?: string, source?: EntrySource, guideMessage?: GuideMessageConfig) => void;
   closeAssistant: () => void;
   toggleFullscreen: () => void;
   toggleHistoryCollapsed: () => void;
@@ -224,7 +249,7 @@ export interface AiAssistantContextValue extends AiAssistantState {
   showToast: (text: string) => void;
   toastText: string | null;
   dismissNotification: () => void;
-  openReminderSheet: (orderId: string, productName?: string, validDate?: string) => void;
+  openReminderSheet: (orderId: string, productName?: string, validDate?: string, initialRemindAt?: number) => void;
   closeReminderSheet: () => void;
   confirmReminder: (reminder: RedeemReminder) => void;
   cancelReminder: (orderId: string) => void;
@@ -244,11 +269,14 @@ export interface AiAssistantContextValue extends AiAssistantState {
   closeVoucherSheet: () => void;
   onOpenReservation?: (orderId: string, category: string, productType?: string) => void;
   sendOrderCard: (order: OrderListItem | OrderData) => void;
+  sendRedeemReminderWithOrder: (order: OrderListItem | OrderData) => void;
   placeOrder: (orderId: string) => Promise<void>;
   startDelivery: (orderId: string) => Promise<void>;
   checkExistingReservation: (orderId?: string) => ReservationInfoCardData | null;
   showExistingReservationAlert: (reservation: ReservationInfoCardData) => void;
   clearChatHistory: () => void;
+  setReachPayload: (payload: { reachId: string; config: ReachConfig; orderId: string } | null) => void;
+  clearReachPayload: () => void;
 }
 
 export interface ApiResponse<T = unknown> {

@@ -3,7 +3,7 @@ export type {
   NluContext,
   NluResponse,
   NluResponseMessage,
-  DialogState,
+  NluDialogState as DialogState,
   IntentType,
   Entity,
   EntityType,

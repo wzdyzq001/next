@@ -10,6 +10,7 @@ import FeatureDemo from './FeatureDemo';
 import StatusFlowDemo from './StatusFlowDemo';
 import InteractionMap from './InteractionMap';
 import { AiOrderCardDemo } from './components/AiAssistant/AiOrderCardDemo';
+import ReachDemo from './ReachDemo';
 import './components/AiAssistant/aiAssistant.css';
 import './components/AiAssistant/cardMarginDemo.css';
 import './components/AiAssistant/widthAlignmentDemo.css';
@@ -126,6 +127,7 @@ function App() {
   const [showStatusFlowDemo, setShowStatusFlowDemo] = useState(false);
   const [showInteractionMap, setShowInteractionMap] = useState(false);
   const [showOrderCardDemo, setShowOrderCardDemo] = useState(false);
+  const [showReachDemo, setShowReachDemo] = useState(false);
 
   const handleOpenReservation = useCallback((orderId: string, category: string, productType?: string) => {
     setReservationTrigger({ orderId, category, productType });
@@ -275,6 +277,34 @@ function App() {
     );
   }
 
+  if (showReachDemo) {
+    return (
+      <>
+        <ReachDemo />
+        <button
+          onClick={() => setShowReachDemo(false)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            right: '16px',
+            zIndex: 9999,
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          📋 订单中心
+        </button>
+      </>
+    );
+  }
+
   if (showFeatureDemo) {
     return (
       <>
@@ -317,6 +347,7 @@ function App() {
           onOpenStatusFlowDemo={() => setShowStatusFlowDemo(true)}
           onOpenInteractionMap={() => setShowInteractionMap(true)}
           onOpenOrderCardDemo={() => setShowOrderCardDemo(true)}
+          onOpenReachDemo={() => setShowReachDemo(true)}
         />
       </AiAssistantProvider>
     </div>

@@ -8,13 +8,15 @@ import RedeemReminderSheet from './RedeemReminderSheet';
 import ReservationPanel from './ReservationPanel';
 import VoucherCodeSheet from './VoucherCodeSheet';
 import { AiOrderCardDemo } from './AiOrderCardDemo';
-import { FullOrderCard } from './OrderCard';
+import { FullOrderCard, CompactOrderCard } from './OrderCard';
 import { FeatureCardRenderer } from './FeatureCard';
 import ReservationInfoCard from './ReservationInfoCard';
 import RedeemReminderCard from './RedeemReminderCard';
 import ConfirmDialog from './ConfirmDialog';
-import type { OrderListItem } from '../../types';
+import type { OrderListItem, RedeemReminder } from '../../types';
 import type { ReservationInfoCardData } from './ReservationInfoCard';
+import type { GuidedQuestion, QuickAction } from './types';
+import { hasOrderCardInMessages } from './messageUtils';
 
 const AiAssistantOverlay: React.FC = () => {
   const {
@@ -30,6 +32,7 @@ const AiAssistantOverlay: React.FC = () => {
     reminderSheetOrderId,
     reminderSheetProductName,
     reminderSheetValidDate,
+    reminderSheetInitialRemindAt,
     reservationPanelOpen,
     reservationStoreName,
     reservationBusinessHours,
@@ -68,6 +71,9 @@ const AiAssistantOverlay: React.FC = () => {
     clearChatHistory,
     reservationsByOrder,
     toastText,
+    showToast,
+    clickGuidedQuestion,
+    context,
   } = useAiAssistantContext();
   const [inputValue, setInputValue] = React.useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -86,6 +92,7 @@ const AiAssistantOverlay: React.FC = () => {
   const dragHeightRef = useRef(0);
   const [mounted, setMounted] = useState(false);
   const [orderSelectorOpen, setOrderSelectorOpen] = useState(false);
+  const [orderSelectorInitialTab, setOrderSelectorInitialTab] = useState<string | undefined>(undefined);
   const [selectedOrder, setSelectedOrder] = useState<OrderListItem | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
@@ -94,7 +101,14 @@ const AiAssistantOverlay: React.FC = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<{ messageId: string; reservation: ReservationInfoCardData } | null>(null);
+  const [reminderCancelConfirmOpen, setReminderCancelConfirmOpen] = useState(false);
+  const [reminderCancelTarget, setReminderCancelTarget] = useState<{ orderId: string; reminder: RedeemReminder } | null>(null);
+  const [now, setNow] = useState(Date.now());
   const [clearHistoryConfirmOpen, setClearHistoryConfirmOpen] = useState(false);
+  const [showOrderHintBubble, setShowOrderHintBubble] = useState(true);
+  const [bubbleFadingOut, setBubbleFadingOut] = useState(false);
+  const orderHintBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const orderHintBubbleFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<any>(null);
   const analyserRef = useRef<any>(null);
@@ -111,8 +125,66 @@ const AiAssistantOverlay: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     dragHeightRef.current = dragHeight;
   }, [dragHeight]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const hasOrderCard = hasOrderCardInMessages(messages);
+    if (!hasOrderCard) {
+      setBubbleFadingOut(false);
+      setShowOrderHintBubble(true);
+      if (orderHintBubbleTimerRef.current) {
+        clearTimeout(orderHintBubbleTimerRef.current);
+      }
+      if (orderHintBubbleFadeTimerRef.current) {
+        clearTimeout(orderHintBubbleFadeTimerRef.current);
+      }
+      orderHintBubbleTimerRef.current = setTimeout(() => {
+        setBubbleFadingOut(true);
+        orderHintBubbleFadeTimerRef.current = setTimeout(() => {
+          setShowOrderHintBubble(false);
+          setBubbleFadingOut(false);
+          orderHintBubbleFadeTimerRef.current = null;
+        }, 300);
+        orderHintBubbleTimerRef.current = null;
+      }, 2700);
+    } else {
+      if (showOrderHintBubble && !bubbleFadingOut) {
+        setBubbleFadingOut(true);
+        if (orderHintBubbleFadeTimerRef.current) {
+          clearTimeout(orderHintBubbleFadeTimerRef.current);
+        }
+        orderHintBubbleFadeTimerRef.current = setTimeout(() => {
+          setShowOrderHintBubble(false);
+          setBubbleFadingOut(false);
+          orderHintBubbleFadeTimerRef.current = null;
+        }, 300);
+      }
+      if (orderHintBubbleTimerRef.current) {
+        clearTimeout(orderHintBubbleTimerRef.current);
+        orderHintBubbleTimerRef.current = null;
+      }
+    }
+  }, [messages, isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (orderHintBubbleTimerRef.current) {
+        clearTimeout(orderHintBubbleTimerRef.current);
+      }
+      if (orderHintBubbleFadeTimerRef.current) {
+        clearTimeout(orderHintBubbleFadeTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -136,10 +208,12 @@ const AiAssistantOverlay: React.FC = () => {
     }
   }, [reminderSheetOpen, reservationPanelOpen, voucherSheetOpen, isOpen, isFullscreen, toggleFullscreen]);
 
-  const handleOpenOrderSelector = useCallback(() => {
+  const handleOpenOrderSelector = useCallback((initialTab?: string | React.MouseEvent) => {
+    const tab = typeof initialTab === 'string' ? initialTab : undefined;
     if (!isFullscreen) {
       toggleFullscreen();
     }
+    setOrderSelectorInitialTab(tab);
     setTimeout(() => {
       setOrderSelectorOpen(true);
     }, 100);
@@ -148,6 +222,56 @@ const AiAssistantOverlay: React.FC = () => {
   const handleCloseOrderSelector = useCallback(() => {
     setOrderSelectorOpen(false);
   }, []);
+
+  const handleQuickReplyClick = useCallback(
+    (qr: GuidedQuestion) => {
+      if (qr.action === 'open_order_selector') {
+        handleOpenOrderSelector('unredeemed');
+        return;
+      }
+      if (qr.action === 'open_reservation') {
+        const dialogState = (context?.dialogState as any) || {};
+        const data = dialogState.data || {};
+        const entities = dialogState.entities || {};
+        const storeName = data.storeName || entities.storeName || reservationStoreName || '预约门店';
+        const businessHours = data.businessHours || '09:00-22:00';
+
+        executeAction({
+          label: '帮我约',
+          kind: 'open_reservation',
+          storeName,
+          businessHours,
+        } as any);
+        return;
+      }
+      clickGuidedQuestion(qr);
+    },
+    [clickGuidedQuestion, executeAction, handleOpenOrderSelector, context, reservationStoreName]
+  );
+
+  const handleQuickActionClick = useCallback(
+    (action: QuickAction) => {
+      switch (action.type) {
+        case 'reservation':
+          sendMessage('我要预约');
+          break;
+        case 'reminder':
+          sendMessage('设置使用提醒');
+          break;
+        case 'pickup_code':
+          sendMessage('查询取餐码');
+          showToast('功能还有一些问题待优化，可以先体验～');
+          break;
+        case 'delivery':
+          sendMessage('查询配送进度');
+          showToast('功能还有一些问题待优化，可以先体验～');
+          break;
+        default:
+          break;
+      }
+    },
+    [sendMessage, showToast]
+  );
 
   const getCurrentHeight = useCallback(() => {
     const viewportHeight = window.innerHeight;
@@ -342,7 +466,28 @@ const AiAssistantOverlay: React.FC = () => {
   const handleSelectOrder = useCallback((order: OrderListItem) => {
     sendOrderCard(order);
     setSelectedOrder(null);
-  }, [sendOrderCard]);
+
+    const dialogState = (context?.dialogState as any) || {};
+    const isInReservationFlow =
+      dialogState.currentIntent === 'reservation' &&
+      dialogState.reservationStep &&
+      dialogState.reservationStep !== 'idle';
+
+    const isInReminderFlow =
+      dialogState.currentIntent === 'reminder' &&
+      dialogState.reminderStep &&
+      dialogState.reminderStep !== 'idle';
+
+    if (isInReservationFlow) {
+      setTimeout(() => {
+        sendMessage('帮我预约这个订单');
+      }, 300);
+    } else if (isInReminderFlow) {
+      setTimeout(() => {
+        sendMessage('设置使用提醒');
+      }, 300);
+    }
+  }, [sendOrderCard, sendMessage, context]);
 
   const handleRemoveOrder = useCallback(() => {
     setSelectedOrder(null);
@@ -655,7 +800,9 @@ const AiAssistantOverlay: React.FC = () => {
                     </div>
                   )}
                   <div className="ai-message-bubble">
-                    {msg.content && !msg.reservationInfo && <div className="ai-message-text">{msg.content}</div>}
+                    {msg.content && (
+                      <div className="ai-message-text" dangerouslySetInnerHTML={{ __html: msg.content }} />
+                    )}
                     {msg.orderCard && (
                       <div className="ai-message-order-card">
                         <FullOrderCard
@@ -701,6 +848,33 @@ const AiAssistantOverlay: React.FC = () => {
                         />
                       </div>
                     )}
+                    {msg.orderList && msg.orderList.length > 0 && (
+                      <div className="ai-message-order-list">
+                        {msg.orderList.slice(0, 3).map((order) => (
+                          <CompactOrderCard
+                            key={order.id}
+                            order={order}
+                            onClick={() => {
+                              sendOrderCard(order as any);
+                            }}
+                          />
+                        ))}
+                        {msg.orderList.length > 3 && (
+                          <button
+                            className="ai-order-list-view-all"
+                            onClick={() => {
+                              msg.orderList!.forEach((order, idx) => {
+                                setTimeout(() => {
+                                  sendOrderCard(order as any);
+                                }, idx * 300);
+                              });
+                            }}
+                          >
+                            查看全部 {msg.orderList.length} 个订单
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {msg.featureCard && (
                       <div className="ai-message-feature-card">
                         <FeatureCardRenderer
@@ -718,7 +892,7 @@ const AiAssistantOverlay: React.FC = () => {
                               ? reservationsByOrder[msg.reservationInfo.orderId]
                               : msg.reservationInfo
                           }
-                          now={Date.now()}
+                          now={now}
                           onCancel={
                             (msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
                               ? reservationsByOrder[msg.reservationInfo.orderId].acceptStatus
@@ -748,27 +922,62 @@ const AiAssistantOverlay: React.FC = () => {
                         />
                       </div>
                     )}
-                    {msg.redeemReminder && msg.orderCard && (
+                    {msg.redeemReminder && (
                       <div className="ai-message-reminder-card">
                         <RedeemReminderCard
                           reminder={msg.redeemReminder}
-                          orderId={msg.orderCard.id}
-                          productName={msg.orderCard.productName}
-                          onCancel={() => cancelReminder(msg.orderCard!.id)}
-                          onModify={() => modifyReminder(msg.orderCard!.id, msg.orderCard!.productName, msg.orderCard!.validDate)}
-                          onReset={() => resetReminder(msg.orderCard!.id, msg.orderCard!.productName, msg.orderCard!.validDate)}
+                          orderId={msg.redeemReminder.orderId}
+                          productName={msg.redeemReminder.productName || msg.orderCard?.productName || ''}
+                          onCancel={() => {
+                            setReminderCancelTarget({ orderId: msg.redeemReminder.orderId, reminder: msg.redeemReminder });
+                            setReminderCancelConfirmOpen(true);
+                          }}
+                          onModify={() => modifyReminder(
+                            msg.redeemReminder.orderId,
+                            msg.redeemReminder.productName || msg.orderCard?.productName,
+                            msg.redeemReminder.validDate || msg.orderCard?.validDate
+                          )}
+                          onReset={() => resetReminder(
+                            msg.redeemReminder.orderId,
+                            msg.redeemReminder.productName || msg.orderCard?.productName,
+                            msg.redeemReminder.validDate || msg.orderCard?.validDate
+                          )}
                         />
                       </div>
                     )}
                     {msg.actions && msg.actions.length > 0 && (
                       <div className="ai-message-actions">
-                        {msg.actions.map((action, idx) => (
+                        {msg.actions.map((action, idx) => {
+                          const variant = (action as any).variant;
+                          const isGuidePrimary = variant === 'guide_primary';
+                          const btnClass = isGuidePrimary ? 'ai-action-btn ai-guide-primary-btn' : 'ai-action-btn';
+                          return (
+                            <button
+                              key={idx}
+                              className={btnClass}
+                              onClick={() => {
+                                if (isGuidePrimary) {
+                                  sendMessage(action.label);
+                                } else {
+                                  executeAction(action);
+                                }
+                              }}
+                            >
+                              {action.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {msg.quickReplies && msg.quickReplies.length > 0 && (
+                      <div className="ai-message-quick-replies">
+                        {msg.quickReplies.map((qr, idx) => (
                           <button
                             key={idx}
-                            className="ai-action-btn"
-                            onClick={() => executeAction(action)}
+                            className="ai-quick-reply-btn"
+                            onClick={() => handleQuickReplyClick(qr)}
                           >
-                            {action.label}
+                            {qr.question}
                           </button>
                         ))}
                       </div>
@@ -821,6 +1030,33 @@ const AiAssistantOverlay: React.FC = () => {
               </button>
             </div>
           )}
+
+          <div className="ai-footer-quick-actions">
+            <button
+              className="ai-footer-quick-action-btn"
+              onClick={() => handleQuickActionClick({ id: 'qa-reservation', label: '预约', type: 'reservation' })}
+            >
+              预约
+            </button>
+            <button
+              className="ai-footer-quick-action-btn"
+              onClick={() => handleQuickActionClick({ id: 'qa-reminder', label: '提醒', type: 'reminder' })}
+            >
+              提醒
+            </button>
+            <button
+              className="ai-footer-quick-action-btn ai-footer-quick-action-btn-disabled"
+              onClick={() => handleQuickActionClick({ id: 'qa-pickup-code', label: '取餐码', type: 'pickup_code' })}
+            >
+              取餐码
+            </button>
+            <button
+              className="ai-footer-quick-action-btn ai-footer-quick-action-btn-disabled"
+              onClick={() => handleQuickActionClick({ id: 'qa-delivery', label: '配送进度', type: 'delivery' })}
+            >
+              配送进度
+            </button>
+          </div>
 
           <div className="ai-input-area">
             <button
@@ -885,16 +1121,23 @@ const AiAssistantOverlay: React.FC = () => {
               />
             )}
 
-            <button
-              className="ai-add-order-btn"
-              onClick={handleOpenOrderSelector}
-              aria-label="选择订单"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
+            <div className="ai-add-order-wrapper">
+              {showOrderHintBubble && (
+                <div className={`ai-order-hint-bubble ${bubbleFadingOut ? 'fading-out' : ''}`}>
+                  <span>选择订单咨询</span>
+                </div>
+              )}
+              <button
+                className="ai-add-order-btn"
+                onClick={handleOpenOrderSelector}
+                aria-label="选择订单"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -910,6 +1153,7 @@ const AiAssistantOverlay: React.FC = () => {
             isOpen={orderSelectorOpen}
             onClose={handleCloseOrderSelector}
             onSelectOrder={handleSelectOrder}
+            initialTab={orderSelectorInitialTab}
           />
           <RedeemReminderSheet
             orderId={reminderSheetOrderId}
@@ -918,6 +1162,7 @@ const AiAssistantOverlay: React.FC = () => {
             open={reminderSheetOpen}
             onClose={closeReminderSheet}
             onConfirm={confirmReminder}
+            initialRemindAt={reminderSheetInitialRemindAt}
           />
           <ReservationPanel
             open={reservationPanelOpen}
@@ -951,6 +1196,25 @@ const AiAssistantOverlay: React.FC = () => {
             onCancel={() => {
               setCancelConfirmOpen(false);
               setCancelTarget(null);
+            }}
+          />
+          <ConfirmDialog
+            open={reminderCancelConfirmOpen}
+            title="取消使用提醒"
+            message="确定取消使用提醒吗？取消后将不再提醒您使用订单。"
+            confirmText="确认取消"
+            cancelText="再想想"
+            confirmButtonType="danger"
+            onConfirm={() => {
+              if (reminderCancelTarget) {
+                cancelReminder(reminderCancelTarget.orderId);
+              }
+              setReminderCancelConfirmOpen(false);
+              setReminderCancelTarget(null);
+            }}
+            onCancel={() => {
+              setReminderCancelConfirmOpen(false);
+              setReminderCancelTarget(null);
             }}
           />
           <ConfirmDialog

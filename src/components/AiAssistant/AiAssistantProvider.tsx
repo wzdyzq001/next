@@ -7,6 +7,7 @@ import type {
   ConversationContext,
   DegradeLevel,
   BubbleConfig,
+  GuideMessageConfig,
   GuidedQuestion,
   WSConnectionState,
   MessageAction,
@@ -14,6 +15,7 @@ import type {
   CollapseState,
   CollapseStateItem,
   LastEntryState,
+  QuickAction,
 } from './types';
 import type { RedeemReminder } from '../../types';
 import type { FeatureCardData } from './FeatureCard/types';
@@ -45,6 +47,7 @@ import {
 import type { OrderListItem } from '../../types';
 import { createReorderFromOriginal } from './OrderCard/orderCardUtils';
 import type { OrderCardData } from './OrderCard/orderCardTypes';
+import type { ReachConfig } from './reach/types';
 const AiAssistantContext = createContext<AiAssistantContextValue | null>(null);
 
 export const useAiAssistantContext = () => {
@@ -84,7 +87,7 @@ const hasReminderCardInLastN = (messages: ChatMessage[], orderId: string, n: num
   const start = Math.max(0, messages.length - n);
   for (let i = start; i < messages.length; i++) {
     const msg = messages[i];
-    if (msg.redeemReminder && msg.orderCard?.id === orderId) {
+    if (msg.redeemReminder && msg.redeemReminder.orderId === orderId) {
       return true;
     }
   }
@@ -198,6 +201,7 @@ export const AiAssistantProvider: React.FC<{
   const [reminderSheetOrderId, setReminderSheetOrderId] = useState<string | null>(null);
   const [reminderSheetProductName, setReminderSheetProductName] = useState<string | undefined>(undefined);
   const [reminderSheetValidDate, setReminderSheetValidDate] = useState<string | undefined>(undefined);
+  const [reminderSheetInitialRemindAt, setReminderSheetInitialRemindAt] = useState<number | undefined>(undefined);
   const [reservationPanelOpen, setReservationPanelOpen] = useState(false);
   const [reservationStoreName, setReservationStoreName] = useState('');
   const [reservationBusinessHours, setReservationBusinessHours] = useState<string | undefined>(undefined);
@@ -211,6 +215,11 @@ export const AiAssistantProvider: React.FC<{
   const [voucherSheetStoreName, setVoucherSheetStoreName] = useState<string | undefined>(undefined);
   const [voucherSheetProductName, setVoucherSheetProductName] = useState<string | undefined>(undefined);
   const [voucherSheetVoucherCode, setVoucherSheetVoucherCode] = useState<string | undefined>(undefined);
+  const [reachPayload, setReachPayloadState] = useState<{
+    reachId: string;
+    config: ReachConfig;
+    orderId: string;
+  } | null>(null);
   const [reservationsByOrder, setReservationsByOrder] = useState<Record<string, ReservationInfoCardData>>(loadSavedReservations);
   const [toastText, setToastText] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -220,10 +229,11 @@ export const AiAssistantProvider: React.FC<{
   const [visibleCount, setVisibleCount] = useState(2);
 
   const contextRef = useRef<ConversationContext>(createEmptyContext());
-  const sessionIdRef = useRef<string>('');
+  const sessionIdRef = useRef<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const wsReconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+  const pendingOrderCardRef = useRef<OrderCardData | null>(null);
 
   const addUserMessage = useCallback((text: string): ChatMessage => {
     const msg: ChatMessage = {
@@ -250,10 +260,16 @@ export const AiAssistantProvider: React.FC<{
     return msg;
   }, []);
 
-  const sendOrderCard = useCallback((order: OrderListItem | any) => {
-    const orderCard = 'category' in order && 'productType' in order && 'id' in order
-      ? convertOrderDataToCardData(order as any)
-      : convertOrderListItemToCardData(order as OrderListItem);
+  const sendOrderCard = useCallback((order: OrderListItem | OrderCardData | any) => {
+    let orderCard: OrderCardData;
+
+    if ('extension' in order && 'thumbnail' in order && 'price' in order) {
+      orderCard = order as OrderCardData;
+    } else if ('category' in order && 'productType' in order && 'id' in order) {
+      orderCard = convertOrderDataToCardData(order as any);
+    } else {
+      orderCard = convertOrderListItemToCardData(order as OrderListItem);
+    }
 
     contextRef.current.currentOrderId = orderCard.id;
     setCurrentOrderId(orderCard.id);
@@ -264,8 +280,42 @@ export const AiAssistantProvider: React.FC<{
       refundStage: 'none',
     };
 
+    pendingOrderCardRef.current = orderCard;
     addAssistantMessage('', { orderCard });
   }, [addAssistantMessage]);
+
+  const sendRedeemReminderWithOrder = useCallback((order: OrderListItem | OrderCardData | any) => {
+    let orderCard: OrderCardData;
+
+    if ('extension' in order && 'thumbnail' in order && 'price' in order) {
+      orderCard = order as OrderCardData;
+    } else if ('category' in order && 'productType' in order && 'id' in order) {
+      orderCard = convertOrderDataToCardData(order as any);
+    } else {
+      orderCard = convertOrderListItemToCardData(order as OrderListItem);
+    }
+
+    const orderId = orderCard.id;
+    const reminder = getReminderByOrder(orderId);
+
+    contextRef.current.currentOrderId = orderId;
+    setCurrentOrderId(orderId);
+    contextRef.current.orderContext = {
+      category: orderCard.category,
+      productType: orderCard.productType,
+      status: orderCard.mainStatus || orderCard.orderStatus,
+      refundStage: 'none',
+    };
+
+    if (!hasReminderCardInLastN(messages, orderId, 3)) {
+      addAssistantMessage('', {
+        orderCard,
+        redeemReminder: reminder,
+      });
+    }
+
+    pendingOrderCardRef.current = orderCard;
+  }, [addAssistantMessage, messages]);
 
   const checkExistingReservation = useCallback((orderId?: string): ReservationInfoCardData | null => {
     const targetOrderId = orderId || currentOrderId;
@@ -326,6 +376,18 @@ export const AiAssistantProvider: React.FC<{
     } catch (e) {
       console.error('Failed to clear chat history:', e);
     }
+  }, []);
+
+  const setReachPayload = useCallback((payload: {
+    reachId: string;
+    config: ReachConfig;
+    orderId: string;
+  } | null) => {
+    setReachPayloadState(payload);
+  }, []);
+
+  const clearReachPayload = useCallback(() => {
+    setReachPayloadState(null);
   }, []);
 
   const updateMessageById = useCallback((id: string, updates: Partial<ChatMessage>) => {
@@ -540,13 +602,22 @@ export const AiAssistantProvider: React.FC<{
         const delay = msg.delay ?? (index === 0 ? 400 : 600);
         totalDelay += delay;
         setTimeout(() => {
-          addAssistantMessage(msg.content || '', {
+          const addedMsg = addAssistantMessage(msg.content || '', {
             quickReplies: msg.quickReplies,
+            actions: msg.actions,
             orderCard: msg.orderCard,
+            orderList: msg.orderList,
             featureCard: msg.featureCard,
             reservationInfo: msg.reservationInfo,
             redeemReminder: msg.redeemReminder,
           });
+          if (msg.reservationInfo && msg.reservationInfo.orderId) {
+            const orderId = msg.reservationInfo.orderId;
+            setReservationsByOrder((prev) => ({
+              ...prev,
+              [orderId!]: msg.reservationInfo!,
+            }));
+          }
         }, totalDelay);
       });
       return totalDelay;
@@ -565,21 +636,28 @@ export const AiAssistantProvider: React.FC<{
 
       if (USE_LOCAL_NLU) {
         try {
-          const lastOrderCard = findLastOrderCard();
-          const currentDialogState = contextRef.current.dialogState || createInitialDialogState();
+          let orderCard: OrderCardData | undefined;
+          if (pendingOrderCardRef.current) {
+            orderCard = pendingOrderCardRef.current;
+            pendingOrderCardRef.current = null;
+          } else {
+            orderCard = findLastOrderCard();
+          }
+          const currentDialogState = (contextRef.current.dialogState as any) || createInitialDialogState();
 
           const nluContext: NluContext = {
             sessionId: sessionIdRef.current || contextRef.current.sessionId,
             dialogState: currentDialogState,
             currentOrderId: currentOrderId,
-            orderCard: lastOrderCard,
+            orderCard,
+            reservationsByOrder,
             conversationTurns: contextRef.current.conversationTurns,
             resolvedQuestions: contextRef.current.resolvedQuestions,
           };
 
           const response = processNluMessage(message, nluContext);
 
-          contextRef.current.dialogState = response.newDialogState;
+          contextRef.current.dialogState = response.newDialogState as any;
 
           if (response.newSessionId) {
             sessionIdRef.current = response.newSessionId;
@@ -645,7 +723,7 @@ export const AiAssistantProvider: React.FC<{
   );
 
   const openAssistant = useCallback(
-    async (orderId?: string, source: EntrySource = 'order_list') => {
+    async (orderId?: string, source: EntrySource = 'order_list', guideMessage?: GuideMessageConfig) => {
       setEntrySource(source);
       setCurrentOrderId(orderId);
       setOverlayMode('minimized');
@@ -681,7 +759,11 @@ export const AiAssistantProvider: React.FC<{
       let isNewOrderCard = false;
       let newOrderCardMessageIndex = -1;
 
-      if (savedHistory) {
+      const reminder = orderId ? getReminderByOrder(orderId) : undefined;
+      const hasActiveReminder = reminder && reminder.status === 'active';
+      const isBubbleWithReminder = source === 'bubble' && orderId && hasActiveReminder;
+
+      if (savedHistory && savedHistory.messages && savedHistory.messages.length > 0) {
         contextRef.current = savedHistory.context;
         sessionIdRef.current = savedHistory.context.sessionId;
         initialMessages = [...savedHistory.messages];
@@ -689,14 +771,23 @@ export const AiAssistantProvider: React.FC<{
         contextRef.current = createEmptyContext();
         sessionIdRef.current = contextRef.current.sessionId;
 
-        const welcome: ChatMessage = {
-          id: genId(),
-          role: 'assistant',
-          contentType: 'text',
-          content: `你好呀！我是${BRAND_NAME}，有什么可以帮你的吗？`,
-          timestamp: Date.now(),
-        };
-        initialMessages.push(welcome);
+        if (!isBubbleWithReminder) {
+          const quickActions: QuickAction[] = [
+            { id: 'qa-reservation', label: '预约', type: 'reservation' },
+            { id: 'qa-reminder', label: '提醒', type: 'reminder' },
+            { id: 'qa-pickup-code', label: '取餐码', type: 'pickup_code' },
+            { id: 'qa-delivery', label: '配送进度', type: 'delivery' },
+          ];
+          const welcome: ChatMessage = {
+            id: genId(),
+            role: 'assistant',
+            contentType: 'text',
+            content: `你好呀！我是${BRAND_NAME}，有什么可以帮你的吗？可以➕选择订单或者直接问我～`,
+            quickActions,
+            timestamp: Date.now(),
+          };
+          initialMessages.push(welcome);
+        }
       }
 
       if (orderId && (currentOrder || currentOrderListItem)) {
@@ -734,17 +825,69 @@ export const AiAssistantProvider: React.FC<{
             isNewOrderCard = true;
             newOrderCardMessageIndex = initialMessages.length;
 
-            const cardMessage: ChatMessage = {
-              id: genId(),
-              role: 'assistant',
-              contentType: 'text',
-              content: '',
-              orderCard,
-              ...(hasActiveReminder ? { redeemReminder: reminder } : {}),
-              timestamp: Date.now(),
-            };
-            initialMessages.push(cardMessage);
+            if (isBubbleWithReminder) {
+              const orderCardMsg: ChatMessage = {
+                id: genId(),
+                role: 'assistant',
+                contentType: 'text',
+                content: '',
+                orderCard,
+                timestamp: Date.now(),
+              };
+              initialMessages.push(orderCardMsg);
+
+              const reminderMsg: ChatMessage = {
+                id: genId(),
+                role: 'assistant',
+                contentType: 'text',
+                content: '',
+                redeemReminder: reminder,
+                timestamp: Date.now(),
+              };
+              initialMessages.push(reminderMsg);
+            } else {
+              const cardMessage: ChatMessage = {
+                id: genId(),
+                role: 'assistant',
+                contentType: 'text',
+                content: '',
+                orderCard,
+                ...(hasActiveReminder ? { redeemReminder: reminder } : {}),
+                timestamp: Date.now(),
+              };
+              initialMessages.push(cardMessage);
+            }
           }
+        }
+      }
+
+      if (guideMessage && !isBubbleWithReminder) {
+        const lastMessage = initialMessages.length > 0
+          ? initialMessages[initialMessages.length - 1]
+          : null;
+
+        const isDuplicate = lastMessage
+          && lastMessage.role === 'assistant'
+          && lastMessage.contentType === 'text'
+          && lastMessage.content === guideMessage.text
+          && (
+            (lastMessage.actions && guideMessage.actions
+              && lastMessage.actions.length === guideMessage.actions.length
+              && lastMessage.actions.every((act, i) => act.label === guideMessage.actions![i].label))
+            || (!lastMessage.actions && !guideMessage.actions)
+          );
+
+        if (!isDuplicate) {
+          const guideMsg: ChatMessage = {
+            id: genId(),
+            role: 'assistant',
+            contentType: 'text',
+            content: guideMessage.text,
+            actions: guideMessage.actions,
+            quickReplies: guideMessage.quickReplies,
+            timestamp: Date.now(),
+          };
+          initialMessages.push(guideMsg);
         }
       }
 
@@ -851,13 +994,13 @@ export const AiAssistantProvider: React.FC<{
           if (timedOut) {
             const updated = {
               ...timedOut.reservation,
-              acceptStatus: 'failed' as const,
-              failReason: 'timeout' as const,
+              acceptStatus: 'accepted' as const,
+              merchantAcceptAt: Date.now(),
             };
             updatedReservations[timedOut.orderId] = updated;
             return {
               ...msg,
-              content: '预约超时，商家未接单',
+              content: '预约成功，商家已接单',
               reservationInfo: updated,
             };
           }
@@ -867,27 +1010,6 @@ export const AiAssistantProvider: React.FC<{
 
       setMessages(finalMessages);
       setReservationsByOrder(updatedReservations);
-
-      pendingReservations.forEach(({ orderId, reservation, messageId }) => {
-        const timeoutDelay = Math.max(0, (reservation.acceptDeadlineAt || 0) - now);
-        const responseDelay = 3000 + Math.random() * 5000;
-        const simulateDelay = Math.min(responseDelay, timeoutDelay - 500);
-        if (simulateDelay > 0) {
-          const simulateTimer = setTimeout(() => {
-            const random = Math.random();
-            if (random < 0.6) {
-              updateReservationStatus(messageId, reservation, 'accepted');
-            } else if (random < 0.85) {
-              updateReservationStatus(messageId, reservation, 'failed', 'rejected');
-            }
-          }, simulateDelay);
-          const timeoutTimer = setTimeout(() => {
-            clearTimeout(simulateTimer);
-            updateReservationStatus(messageId, reservation, 'failed', 'timeout');
-          }, timeoutDelay);
-          reservationTimersRef.current[orderId] = { simulate: simulateTimer, timeout: timeoutTimer };
-        }
-      });
 
       const reservationsFromHistory: Record<string, ReservationInfoCardData> = {};
       finalMessages.forEach((msg) => {
@@ -1017,6 +1139,21 @@ export const AiAssistantProvider: React.FC<{
         setReminderSheetOrderId(action.orderId);
         setReminderSheetOpen(true);
         break;
+      case 'view_redeem_reminder': {
+        const orderId = (action as any).orderId || currentOrderId;
+        if (orderId) {
+          const orderMsg = messages.find(m => m.orderCard && m.orderCard.id === orderId);
+          const orderCard = orderMsg?.orderCard;
+          if (orderCard && !hasReminderCardInLastN(messages, orderId, 3)) {
+            const reminder = getReminderByOrder(orderId);
+            addAssistantMessage('', {
+              orderCard,
+              redeemReminder: reminder,
+            });
+          }
+        }
+        break;
+      }
       case 'open_reservation': {
         const orderId = (action as any).orderId || currentOrderId;
         if (orderId && orderId !== currentOrderId) {
@@ -1146,11 +1283,12 @@ export const AiAssistantProvider: React.FC<{
     }
   }, [addAssistantMessage, closeAllSheets, currentOrderId, messages, reservationsByOrder, showExistingReservationAlert, setCurrentOrderId]);
 
-  const openReminderSheet = useCallback((orderId: string, productName?: string, validDate?: string) => {
+  const openReminderSheet = useCallback((orderId: string, productName?: string, validDate?: string, initialRemindAt?: number) => {
     closeAllSheets();
     setReminderSheetOrderId(orderId);
     setReminderSheetProductName(productName);
     setReminderSheetValidDate(validDate);
+    setReminderSheetInitialRemindAt(initialRemindAt);
     setReminderSheetOpen(true);
   }, [closeAllSheets]);
 
@@ -1158,6 +1296,7 @@ export const AiAssistantProvider: React.FC<{
     setReminderSheetOpen(false);
     setReminderEditMode('new');
     setReminderFromMessageId(null);
+    setReminderSheetInitialRemindAt(undefined);
   }, []);
 
   const confirmReminder = useCallback((reminder: RedeemReminder) => {
@@ -1300,25 +1439,6 @@ export const AiAssistantProvider: React.FC<{
     setReservationEditMode('new');
     setEditingReservation(null);
     setRebookFromMessageId(null);
-
-    if (targetMessageId && currentOrderId) {
-      clearReservationTimers(currentOrderId);
-      const responseDelay = 3000 + Math.random() * 5000;
-      const timeoutDelay = Math.max(0, (newReservationInfo.acceptDeadlineAt || 0) - Date.now());
-      const simulateTimer = setTimeout(() => {
-        const random = Math.random();
-        if (random < 0.6) {
-          updateReservationStatus(targetMessageId!, newReservationInfo, 'accepted');
-        } else if (random < 0.85) {
-          updateReservationStatus(targetMessageId!, newReservationInfo, 'failed', 'rejected');
-        }
-      }, Math.min(responseDelay, timeoutDelay - 500));
-      const timeoutTimer = setTimeout(() => {
-        clearTimeout(simulateTimer);
-        updateReservationStatus(targetMessageId!, newReservationInfo, 'failed', 'timeout');
-      }, timeoutDelay);
-      reservationTimersRef.current[currentOrderId] = { simulate: simulateTimer, timeout: timeoutTimer };
-    }
   }, [addAssistantMessage, updateMessageById, updateReservationStatus, reservationEditMode, rebookFromMessageId, currentOrderId, messages, clearReservationTimers]);
 
   const cancelReservation = useCallback((messageId: string, reservation: ReservationInfoCardData) => {
@@ -1395,17 +1515,18 @@ export const AiAssistantProvider: React.FC<{
 
   const modifyReminder = useCallback((orderId: string, productName?: string, validDate?: string) => {
     console.log('Modify reminder:', orderId);
-    const relatedMsg = messages.find((m) => m.redeemReminder && m.orderCard?.id === orderId);
+    const relatedMsg = messages.find((m) => m.redeemReminder && m.redeemReminder.orderId === orderId);
     if (relatedMsg) {
       setReminderEditMode('modify');
       setReminderFromMessageId(relatedMsg.id);
     }
-    openReminderSheet(orderId, productName, validDate);
+    const existingReminder = getReminderByOrder(orderId);
+    openReminderSheet(orderId, productName, validDate, existingReminder?.remindAt);
   }, [messages, openReminderSheet]);
 
   const resetReminder = useCallback((orderId: string, productName?: string, validDate?: string) => {
     console.log('Reset reminder:', orderId);
-    const relatedMsg = messages.find((m) => m.redeemReminder && m.orderCard?.id === orderId);
+    const relatedMsg = messages.find((m) => m.redeemReminder && m.redeemReminder.orderId === orderId);
     if (relatedMsg) {
       setReminderEditMode('reset');
       setReminderFromMessageId(relatedMsg.id);
@@ -1523,24 +1644,49 @@ export const AiAssistantProvider: React.FC<{
 
   useEffect(() => {
     const now = Date.now();
-    const updated: Record<string, ReservationInfoCardData> = {};
-    let hasChanges = false;
 
     Object.entries(reservationsByOrder).forEach(([orderId, reservation]) => {
-      if (reservation.acceptStatus === 'pending' && reservation.acceptDeadlineAt && reservation.acceptDeadlineAt <= now) {
-        updated[orderId] = {
-          ...reservation,
-          acceptStatus: 'failed',
-          failReason: 'timeout',
-        };
-        hasChanges = true;
-      }
+      if (reservation.acceptStatus !== 'pending') return;
+      if (reservationTimersRef.current[orderId]) return;
+
+      const totalDuration = 5 * 60 * 1000;
+      const createdAt = (reservation.acceptDeadlineAt || now + totalDuration) - totalDuration;
+      const elapsed = now - createdAt;
+      const autoAcceptDelay = Math.max(0, 30 * 1000 - elapsed);
+
+      const timer = setTimeout(() => {
+        const relatedMsg = messages.find((m) => m.reservationInfo && m.reservationInfo.orderId === orderId);
+        if (relatedMsg) {
+          updateReservationStatus(relatedMsg.id, reservation, 'accepted');
+        } else {
+          setReservationsByOrder((prev) => {
+            const current = prev[orderId];
+            if (!current || current.acceptStatus !== 'pending') return prev;
+            return {
+              ...prev,
+              [orderId]: {
+                ...current,
+                acceptStatus: 'accepted',
+                merchantAcceptAt: Date.now(),
+              },
+            };
+          });
+          delete reservationTimersRef.current[orderId];
+        }
+      }, autoAcceptDelay);
+
+      reservationTimersRef.current[orderId] = { simulate: timer, timeout: timer };
     });
 
-    if (hasChanges) {
-      setReservationsByOrder((prev) => ({ ...prev, ...updated }));
-    }
-  }, []);
+    return () => {
+      Object.keys(reservationTimersRef.current).forEach((orderId) => {
+        if (!reservationsByOrder[orderId] || reservationsByOrder[orderId].acceptStatus !== 'pending') {
+          clearTimeout(reservationTimersRef.current[orderId].simulate);
+          delete reservationTimersRef.current[orderId];
+        }
+      });
+    };
+  }, [reservationsByOrder, messages, updateReservationStatus]);
 
   const value: AiAssistantContextValue = {
     overlayMode,
@@ -1562,6 +1708,7 @@ export const AiAssistantProvider: React.FC<{
     reminderSheetOrderId,
     reminderSheetProductName,
     reminderSheetValidDate,
+    reminderSheetInitialRemindAt,
     reservationPanelOpen,
     reservationStoreName,
     reservationBusinessHours,
@@ -1628,11 +1775,15 @@ export const AiAssistantProvider: React.FC<{
     rebookOrderReservation,
     onOpenReservation,
     sendOrderCard,
+    sendRedeemReminderWithOrder,
     placeOrder,
     startDelivery,
     checkExistingReservation,
     showExistingReservationAlert,
     clearChatHistory,
+    setReachPayload,
+    clearReachPayload,
+    reachPayload,
   };
 
   return (

@@ -2,7 +2,7 @@ import type {
   NluContext,
   NluResponse,
   NluResponseMessage,
-  DialogState,
+  NluDialogState,
   IntentType,
 } from './types';
 import { recognizeIntent, isCancelIntent, isAffirmative, isNegative } from './intentRecognizer';
@@ -16,7 +16,7 @@ import {
 import { createQuickReply } from './utils';
 import { MOCK_ORDERS } from './scenarioData';
 
-export function createInitialDialogState(): DialogState {
+export function createInitialDialogState(): NluDialogState {
   return {
     currentIntent: null,
     entities: {},
@@ -36,25 +36,7 @@ export function processNluMessage(
     return handleCancelFlow(context);
   }
 
-  const currentIntent = dialogState.currentIntent;
-
-  if (currentIntent === 'reservation' && dialogState.currentStep !== 'idle') {
-    return handleReservationIntent(message, context);
-  }
-
-  if (currentIntent === 'reminder' && dialogState.currentStep !== 'idle') {
-    return handleReminderIntent(message, context);
-  }
-
-  if (currentIntent === 'pickup_code' && dialogState.currentStep !== 'idle') {
-    return handlePickupCodeIntent(message, context);
-  }
-
-  if (currentIntent === 'delivery' && dialogState.currentStep !== 'idle') {
-    return handleDeliveryIntent(message, context);
-  }
-
-  const intent = recognizeIntent(message);
+  const newIntent = recognizeIntent(message);
   const entities = extractEntities(message);
 
   const entityMap: Record<string, string> = {};
@@ -62,16 +44,66 @@ export function processNluMessage(
     entityMap[entity.type] = entity.value;
   }
 
+  const currentIntent = dialogState.currentIntent;
+  const currentStep = dialogState.currentStep;
+
+  const criticalSteps = [
+    'waiting_reserve_confirm',
+    'waiting_order_confirm',
+    'waiting_self_order_confirm',
+    'waiting_delivery_confirm',
+    'waiting_date_confirm',
+    'waiting_time_confirm',
+    'waiting_people_confirm',
+    'waiting_reminder_date_confirm',
+    'waiting_reminder_time_confirm',
+  ];
+
+  const isInCriticalStep = criticalSteps.includes(currentStep);
+
+  if (currentIntent && currentStep !== 'idle' && currentStep !== 'completed' && isInCriticalStep) {
+    if (newIntent === currentIntent || newIntent === 'unknown' || newIntent === 'greeting') {
+      switch (currentIntent) {
+        case 'reservation':
+          return handleReservationIntent(message, context);
+        case 'reminder':
+          return handleReminderIntent(message, context);
+        case 'pickup_code':
+          return handlePickupCodeIntent(message, context);
+        case 'delivery':
+          return handleDeliveryIntent(message, context);
+      }
+    }
+  }
+
+  if (currentIntent && currentStep !== 'idle' && currentStep !== 'completed' && !isInCriticalStep) {
+    if (newIntent === currentIntent || newIntent === 'unknown' || newIntent === 'greeting') {
+      switch (currentIntent) {
+        case 'reservation':
+          return handleReservationIntent(message, context);
+        case 'reminder':
+          return handleReminderIntent(message, context);
+        case 'pickup_code':
+          return handlePickupCodeIntent(message, context);
+        case 'delivery':
+          return handleDeliveryIntent(message, context);
+      }
+    }
+  }
+
   const newContext: NluContext = {
     ...context,
     dialogState: {
       ...dialogState,
-      currentIntent: intent,
-      entities: entityMap,
+      currentIntent: newIntent,
+      entities: {
+        ...dialogState.entities,
+        ...entityMap,
+      },
     },
   };
 
-  switch (intent) {
+  switch (newIntent) {
     case 'greeting':
       return handleGreeting(newContext);
     case 'delivery':
@@ -98,9 +130,10 @@ function handleGreeting(context: NluContext): NluResponse {
   const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
 
   const quickReplies = [
-    createQuickReply('qr-1', '帮我查取餐码'),
-    createQuickReply('qr-2', '配送进度在哪看'),
-    createQuickReply('qr-3', '我要预约'),
+    createQuickReply('qr-reserve', '预约'),
+    createQuickReply('qr-remind', '提醒'),
+    createQuickReply('qr-pickup', '取餐码'),
+    createQuickReply('qr-delivery', '配送进度'),
   ];
 
   return {
@@ -143,13 +176,19 @@ function handleCancelFlow(context: NluContext): NluResponse {
 }
 
 function handleUnknownIntent(message: string, context: NluContext): NluResponse {
-  const reply = '抱歉，我暂时还不太理解您的问题。您可以试试问我关于订单配送、取餐码、预约或使用提醒的问题~';
+  const reply = '后续接入agent通过相关数据源总结回答，可先体验帮预约、订单使用提醒功能';
 
-  const quickReplies = [
-    createQuickReply('qr-delivery', '查配送进度'),
-    createQuickReply('qr-pickup', '查取餐码'),
-    createQuickReply('qr-reserve', '我要预约'),
-    createQuickReply('qr-remind', '设置使用提醒'),
+  const actions = [
+    {
+      label: '预约',
+      kind: 'guide_primary',
+      variant: 'guide_primary',
+    } as any,
+    {
+      label: '提醒',
+      kind: 'guide_primary',
+      variant: 'guide_primary',
+    } as any,
   ];
 
   return {
@@ -158,7 +197,7 @@ function handleUnknownIntent(message: string, context: NluContext): NluResponse 
         role: 'assistant',
         contentType: 'text',
         content: reply,
-        quickReplies,
+        actions,
       },
     ],
     newDialogState: {
@@ -173,4 +212,4 @@ export function getMockOrderList() {
   return Object.values(MOCK_ORDERS);
 }
 
-export type { IntentType, DialogState, NluResponseMessage };
+export type { IntentType, NluDialogState as DialogState, NluResponseMessage };

@@ -8,6 +8,74 @@ import type { RedeemReminder } from '../../types';
 import { VoucherCodeSheet } from './VoucherCodeSheet';
 import { useAiAssistantContext } from './AiAssistantProvider';
 
+const FOOD_MAIN_STATUSES = [
+  { value: 'all', label: '全部状态' },
+  { value: 'pending_pay', label: '待支付' },
+  { value: 'unused', label: '待使用' },
+  { value: 'cancelled', label: '订单取消' },
+  { value: 'redeemed', label: '交易完成' },
+  { value: 'refunding', label: '退款申请中' },
+  { value: 'refund_success', label: '退款成功' },
+  { value: 'refund_fail', label: '退款失败' },
+] as const;
+
+const FOOD_SUB_STATUSES: Record<string, { value: string; label: string }[]> = {
+  self_order: [
+    { value: 'self_01_pending_accept', label: '待商家接单' },
+    { value: 'self_02_accepted', label: '商家已接单' },
+    { value: 'self_03_preparing', label: '制作中' },
+    { value: 'self_04_waiting_pickup', label: '待取餐' },
+    { value: 'self_05_picked_up', label: '已取餐' },
+  ],
+  delivery: [
+    { value: 'delivery_01_pending_accept', label: '待商家接单' },
+    { value: 'delivery_02_accepted', label: '商家已接单' },
+    { value: 'delivery_03_preparing', label: '商家备餐中' },
+    { value: 'delivery_04_waiting_rider', label: '待骑手取餐' },
+    { value: 'delivery_05_delivering', label: '配送中' },
+    { value: 'delivery_06_delivered', label: '已送达' },
+  ],
+  voucher: [
+    { value: 'voucher_redeemed', label: '已核销' },
+  ],
+};
+
+const FOOD_SUB_STATUS_TO_MAIN: Record<string, string> = {
+  'self_01_pending_accept': 'redeemed',
+  'self_02_accepted': 'redeemed',
+  'self_03_preparing': 'redeemed',
+  'self_04_waiting_pickup': 'redeemed',
+  'self_05_picked_up': 'redeemed',
+  'delivery_01_pending_accept': 'redeemed',
+  'delivery_02_accepted': 'redeemed',
+  'delivery_03_preparing': 'redeemed',
+  'delivery_04_waiting_rider': 'redeemed',
+  'delivery_05_delivering': 'redeemed',
+  'delivery_06_delivered': 'redeemed',
+  'voucher_redeemed': 'redeemed',
+};
+
+const FOOD_MAIN_STATUS_LABELS: Record<string, string> = {
+  pending_pay: '待支付',
+  unused: '待使用',
+  cancelled: '订单取消',
+  redeemed: '交易完成',
+  refunding: '退款申请中',
+  refund_success: '退款成功',
+  refund_fail: '退款失败',
+};
+
+function getDemoOrderMainStatus(order: DemoOrder): string {
+  if (order.category !== 'food') return order.orderStatus;
+  if (FOOD_SUB_STATUS_TO_MAIN[order.orderStatus]) return FOOD_SUB_STATUS_TO_MAIN[order.orderStatus];
+  return order.orderStatus;
+}
+
+function getDemoOrderMainStatusLabel(order: DemoOrder): string {
+  const mainStatus = getDemoOrderMainStatus(order);
+  return FOOD_MAIN_STATUS_LABELS[mainStatus] || order.orderStatusLabel;
+}
+
 interface DemoOrder {
   id: string;
   category: 'food' | 'hotel' | 'scenic' | 'general' | 'travel_agency';
@@ -17,7 +85,7 @@ interface DemoOrder {
   redeemMethod?: 'voucher' | 'self_order' | 'delivery';
   redeemMethodLabel?: string;
   redeemTypes?: ('voucher' | 'order' | 'delivery')[];
-  orderStatus: 'pending_pay' | 'unused' | 'pending_accept' | 'preparing' | 'delivering' | 'waiting_pickup' | 'picked_up' | 'to_book' | 'booking_confirming' | 'booked' | 'checked_in' | 'entered' | 'pending_travel' | 'in_travel' | 'refunding' | 'refund_success' | 'refund_fail' | 'cancelled' | 'completed';
+  orderStatus: string;
   orderStatusLabel: string;
   productName: string;
   price: number;
@@ -74,7 +142,7 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'delivery',
     redeemMethodLabel: '外卖',
-    orderStatus: 'delivering',
+    orderStatus: 'delivery_05_delivering',
     orderStatusLabel: '配送中',
     productName: '巨无霸套餐 中薯 可乐(中) 三人餐',
     price: 88.0,
@@ -293,15 +361,15 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'voucher',
     redeemMethodLabel: '到店套餐',
-    orderStatus: 'completed',
-    orderStatusLabel: '已完成',
+    orderStatus: 'voucher_redeemed',
+    orderStatusLabel: '已核销',
     productName: '海底捞火锅 4人套餐 含锅底蘸料',
     price: 288.0,
     thumbnail: '🍲',
     tags: ['随时退'],
     storeName: '海底捞(海岸城店)',
     distance: '2.1km',
-    statusText: '已完成',
+    statusText: '交易完成',
     statusColor: 'green',
     actions: [
       { label: '评价晒单', type: 'secondary' },
@@ -342,8 +410,8 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'delivery',
     redeemMethodLabel: '外卖',
-    orderStatus: 'pending_accept',
-    orderStatusLabel: '待接单',
+    orderStatus: 'delivery_01_pending_accept',
+    orderStatusLabel: '待商家接单',
     productName: '喜茶多肉葡萄 大杯 少冰 标准糖',
     price: 29.0,
     thumbnail: '🧋',
@@ -368,6 +436,40 @@ const demoOrders: DemoOrder[] = [
     suggestions: ['多久能接单？', '可以取消吗？', '怎么催单？'],
   },
   {
+    id: 'food-delivery-accepted',
+    category: 'food',
+    categoryLabel: '餐饮',
+    productType: 'group_voucher',
+    productTypeLabel: '团购券',
+    redeemMethod: 'delivery',
+    redeemMethodLabel: '外卖',
+    orderStatus: 'delivery_02_accepted',
+    orderStatusLabel: '商家已接单',
+    productName: '喜茶多肉葡萄 大杯 少冰 标准糖',
+    price: 29.0,
+    thumbnail: '🧋',
+    tags: ['免配送费', '极速达'],
+    storeName: '喜茶(万象城店)',
+    distance: '1.5km',
+    statusText: '商家已接单',
+    statusColor: 'blue',
+    extension: {
+      type: 'progress',
+      title: '配送进度',
+      estimatedTime: '预计15分钟送达',
+      steps: [
+        { label: '下单成功', state: 'done', time: '11:20' },
+        { label: '商家已接单', state: 'done', time: '11:22' },
+        { label: '商家备餐中', state: 'active', time: '11:25' },
+        { label: '骑手取餐', state: 'pending' },
+        { label: '配送中', state: 'pending' },
+        { label: '已送达', state: 'pending' },
+      ],
+    },
+    actions: [],
+    suggestions: ['多久能送到？', '可以取消吗？', '帮我催一下'],
+  },
+  {
     id: 'food-delivery-preparing',
     category: 'food',
     categoryLabel: '餐饮',
@@ -375,8 +477,8 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'delivery',
     redeemMethodLabel: '外卖',
-    orderStatus: 'preparing',
-    orderStatusLabel: '制作中',
+    orderStatus: 'delivery_03_preparing',
+    orderStatusLabel: '商家备餐中',
     productName: '瑞幸生椰拿铁 大杯 热 标准糖',
     price: 19.9,
     thumbnail: '☕',
@@ -401,6 +503,40 @@ const demoOrders: DemoOrder[] = [
     suggestions: ['还需要等多久？', '帮我催一下', '可以取消吗？'],
   },
   {
+    id: 'food-delivery-waiting-rider',
+    category: 'food',
+    categoryLabel: '餐饮',
+    productType: 'group_voucher',
+    productTypeLabel: '团购券',
+    redeemMethod: 'delivery',
+    redeemMethodLabel: '外卖',
+    orderStatus: 'delivery_04_waiting_rider',
+    orderStatusLabel: '待骑手取餐',
+    productName: '瑞幸生椰拿铁 大杯 热 标准糖',
+    price: 19.9,
+    thumbnail: '☕',
+    tags: ['限时折扣', '免配送费'],
+    storeName: '瑞幸咖啡(科技园店)',
+    distance: '0.6km',
+    statusText: '待骑手取餐',
+    statusColor: 'blue',
+    extension: {
+      type: 'progress',
+      title: '配送进度',
+      estimatedTime: '预计12分钟送达',
+      steps: [
+        { label: '下单成功', state: 'done', time: '11:20' },
+        { label: '商家已接单', state: 'done', time: '11:22' },
+        { label: '商家备餐中', state: 'done', time: '11:25' },
+        { label: '待骑手取餐', state: 'active', time: '11:35' },
+        { label: '配送中', state: 'pending' },
+        { label: '已送达', state: 'pending' },
+      ],
+    },
+    actions: [],
+    suggestions: ['骑手到哪了？', '还有多久到？', '可以改地址吗？'],
+  },
+  {
     id: 'food-delivery-completed',
     category: 'food',
     categoryLabel: '餐饮',
@@ -408,8 +544,8 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'delivery',
     redeemMethodLabel: '外卖',
-    orderStatus: 'completed',
-    orderStatusLabel: '已完成',
+    orderStatus: 'delivery_06_delivered',
+    orderStatusLabel: '已送达',
     productName: '麦当劳麦辣鸡腿堡套餐 中薯 可乐',
     price: 39.9,
     thumbnail: '🍔',
@@ -446,8 +582,8 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'self_order',
     redeemMethodLabel: '自提',
-    orderStatus: 'pending_accept',
-    orderStatusLabel: '待接单',
+    orderStatus: 'self_01_pending_accept',
+    orderStatusLabel: '待商家接单',
     productName: '星巴克冰美式 大杯 少冰',
     price: 32.0,
     thumbnail: '☕',
@@ -472,6 +608,39 @@ const demoOrders: DemoOrder[] = [
     suggestions: ['多久能接单', '可以取消吗', '怎么催单'],
   },
   {
+    id: 'food-pickup-accepted',
+    category: 'food',
+    categoryLabel: '餐饮',
+    productType: 'group_voucher',
+    productTypeLabel: '团购券',
+    redeemMethod: 'self_order',
+    redeemMethodLabel: '自提',
+    orderStatus: 'self_02_accepted',
+    orderStatusLabel: '商家已接单',
+    productName: '瑞幸生椰拿铁 大杯 热 标准糖',
+    price: 19.9,
+    thumbnail: '☕',
+    tags: ['到店取', '免排队'],
+    storeName: '瑞幸咖啡(科技园店)',
+    distance: '0.6km',
+    statusText: '商家已接单',
+    statusColor: 'blue',
+    extension: {
+      type: 'progress',
+      title: '取餐进度',
+      estimatedTime: '预计8分钟后可取',
+      steps: [
+        { label: '下单成功', state: 'done', time: '10:02' },
+        { label: '商家已接单', state: 'done', time: '10:03' },
+        { label: '制作中', state: 'active', time: '10:05' },
+        { label: '待取餐', state: 'pending' },
+        { label: '已取餐', state: 'pending' },
+      ],
+    },
+    actions: [],
+    suggestions: ['还需要等多久', '帮我催一下', '可以取消吗'],
+  },
+  {
     id: 'food-pickup-preparing',
     category: 'food',
     categoryLabel: '餐饮',
@@ -479,7 +648,7 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'self_order',
     redeemMethodLabel: '自提',
-    orderStatus: 'preparing',
+    orderStatus: 'self_03_preparing',
     orderStatusLabel: '制作中',
     productName: '星巴克冰美式 大杯 少冰',
     price: 32.0,
@@ -512,7 +681,7 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'self_order',
     redeemMethodLabel: '自提',
-    orderStatus: 'waiting_pickup',
+    orderStatus: 'self_04_waiting_pickup',
     orderStatusLabel: '待取餐',
     productName: '星巴克冰美式 大杯 少冰',
     price: 32.0,
@@ -543,7 +712,7 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'self_order',
     redeemMethodLabel: '自提',
-    orderStatus: 'waiting_pickup',
+    orderStatus: 'self_04_waiting_pickup',
     orderStatusLabel: '待取餐',
     productName: '喜茶多肉葡萄 大杯 少冰 标准糖',
     price: 29.0,
@@ -563,14 +732,55 @@ const demoOrders: DemoOrder[] = [
     suggestions: ['取餐码在哪', '门店在哪', '可以退款吗'],
   },
   {
+    id: 'food-pickup-picked-up',
+    category: 'food',
+    categoryLabel: '餐饮',
+    productType: 'group_voucher',
+    productTypeLabel: '团购券',
+    redeemMethod: 'self_order',
+    redeemMethodLabel: '自提',
+    orderStatus: 'self_05_picked_up',
+    orderStatusLabel: '已取餐',
+    productName: '星巴克冰美式 大杯 少冰',
+    price: 32.0,
+    thumbnail: '☕',
+    tags: ['到店取', '免排队'],
+    storeName: '星巴克(华润城店)',
+    distance: '0.8km',
+    statusText: '已取餐',
+    statusColor: 'green',
+    extension: {
+      type: 'pickup_completed',
+      title: '取餐信息',
+      summary: '已取餐，祝用餐愉快',
+      pickupCode: 'A066',
+      pickupTime: '已取餐',
+      info: [
+        { label: '取餐号', value: 'A066' },
+        { label: '取餐时间', value: '10:28' },
+      ],
+      steps: [
+        { label: '下单成功', state: 'done', time: '10:02' },
+        { label: '商家已接单', state: 'done', time: '10:03' },
+        { label: '制作中', state: 'done', time: '10:05' },
+        { label: '待取餐', state: 'done', time: '10:15' },
+        { label: '已取餐', state: 'done', time: '10:28' },
+      ],
+    },
+    actions: [
+      { label: '再来一单', type: 'primary' },
+    ],
+    suggestions: ['餐品有问题怎么办', '怎么开发票', '再次购买'],
+  },
+  {
     id: 'food-dine-in-preparing',
     category: 'food',
     categoryLabel: '餐饮',
     productType: 'group_voucher',
     productTypeLabel: '团购券',
-    redeemMethod: 'voucher',
-    redeemMethodLabel: '到店套餐',
-    orderStatus: 'preparing',
+    redeemMethod: 'self_order',
+    redeemMethodLabel: '到店取餐',
+    orderStatus: 'self_03_preparing',
     orderStatusLabel: '制作中',
     productName: '海底捞番茄锅底双人套餐 含6荤6素',
     price: 268.0,
@@ -591,15 +801,15 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'voucher',
     redeemMethodLabel: '到店套餐',
-    orderStatus: 'completed',
-    orderStatusLabel: '已完成',
+    orderStatus: 'voucher_redeemed',
+    orderStatusLabel: '已核销',
     productName: '太二酸菜鱼双人套餐 含米饭饮料',
     price: 158.0,
     thumbnail: '🐟',
     tags: ['堂食', '人气爆款'],
     storeName: '太二酸菜鱼(益田假日店)',
     distance: '3.2km',
-    statusText: '已完成',
+    statusText: '交易完成',
     statusColor: 'green',
     actions: [
       { label: '评价晒单', type: 'secondary' },
@@ -614,15 +824,15 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'voucher',
     redeemMethodLabel: '到店套餐',
-    orderStatus: 'completed',
-    orderStatusLabel: '已使用',
+    orderStatus: 'voucher_redeemed',
+    orderStatusLabel: '已核销',
     productName: '探鱼 重庆豆花烤鱼3人套餐',
     price: 198.0,
     thumbnail: '🐠',
     tags: ['随时退', '过期退'],
     storeName: '探鱼(海上世界店)',
     distance: '4.5km',
-    statusText: '已使用',
+    statusText: '交易完成',
     statusColor: 'green',
     actions: [
       { label: '评价商家', type: 'secondary' },
@@ -1988,8 +2198,8 @@ const demoOrders: DemoOrder[] = [
     productTypeLabel: '团购券',
     redeemMethod: 'voucher',
     redeemMethodLabel: '到店套餐',
-    orderStatus: 'completed',
-    orderStatusLabel: '交易完成',
+    orderStatus: 'voucher_redeemed',
+    orderStatusLabel: '已核销',
     productName: '【双人餐】招牌烤鱼套餐 含配菜+饮品',
     price: 128.0,
     thumbnail: '🍲',
@@ -1997,7 +2207,7 @@ const demoOrders: DemoOrder[] = [
     storeName: '江边城外烤鱼（望京店）',
     distance: '1.2km',
     statusText: '交易完成',
-    statusColor: 'gray',
+    statusColor: 'green',
     actions: [
       { label: '再来一单', type: 'primary' },
       { label: '去评价', type: 'secondary' },
@@ -2977,6 +3187,8 @@ export function AiOrderCardDemo() {
   const [filterProductType, setFilterProductType] = useState<string>('all');
   const [filterRedeemMethod, setFilterRedeemMethod] = useState<string>('all');
   const [filterOrderStatus, setFilterOrderStatus] = useState<string>('all');
+  const [filterFoodMainStatus, setFilterFoodMainStatus] = useState<string>('all');
+  const [filterFoodSubStatus, setFilterFoodSubStatus] = useState<string>('all');
   const [reservationOpen, setReservationOpen] = useState(false);
   const [reservationOrder, setReservationOrder] = useState<DemoOrder | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -3002,7 +3214,7 @@ export function AiOrderCardDemo() {
       });
     }, 0);
     return () => clearTimeout(timer);
-  }, [activeTab, filterCategory, filterProductType, filterOrderStatus, expandedCompact]);
+  }, [activeTab, filterCategory, filterProductType, filterOrderStatus, filterFoodMainStatus, filterFoodSubStatus, expandedCompact]);
 
   useEffect(() => {
     const sliders = document.querySelectorAll<HTMLElement>('.demo-suggestions-list');
@@ -3054,7 +3266,7 @@ export function AiOrderCardDemo() {
         h.el.removeEventListener('mouseleave', h.leave);
       });
     };
-  }, [activeTab, filterCategory, filterProductType, filterOrderStatus, expandedCompact]);
+  }, [activeTab, filterCategory, filterProductType, filterOrderStatus, filterFoodMainStatus, filterFoodSubStatus, expandedCompact]);
 
   const categoryOptions = [
     { value: 'all', label: '全部行业' },
@@ -3065,43 +3277,191 @@ export function AiOrderCardDemo() {
     { value: 'travel_agency', label: '旅行社' },
   ];
 
-  const productTypeOptions = [
-    { value: 'all', label: '全部类型' },
-    { value: 'group_voucher', label: '团购券' },
-    { value: 'presale_voucher', label: '预售券' },
-    { value: 'calendar_room', label: '日历房' },
-    { value: 'calendar_ticket', label: '日历票' },
-  ];
+  const FILTER_CONFIG: Record<string, {
+    productTypes: Record<string, {
+      orderStatuses: string[];
+    }>;
+    redeemMethods: string[];
+  }> = {
+    food: {
+      productTypes: {
+        group_voucher: {
+          orderStatuses: [],
+        },
+      },
+      redeemMethods: ['voucher', 'self_order', 'delivery'],
+    },
+    hotel: {
+      productTypes: {
+        presale_voucher: {
+          orderStatuses: ['pending_pay', 'to_book', 'booking_confirming', 'booked', 'checked_in', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+        calendar_room: {
+          orderStatuses: ['pending_pay', 'booking_confirming', 'booked', 'checked_in', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+      },
+      redeemMethods: [],
+    },
+    scenic: {
+      productTypes: {
+        group_voucher: {
+          orderStatuses: ['pending_pay', 'unused', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+        presale_voucher: {
+          orderStatuses: ['pending_pay', 'to_book', 'booking_confirming', 'booked', 'entered', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+        calendar_ticket: {
+          orderStatuses: ['pending_pay', 'booking_confirming', 'booked', 'entered', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+      },
+      redeemMethods: [],
+    },
+    general: {
+      productTypes: {
+        group_voucher: {
+          orderStatuses: ['pending_pay', 'unused', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+      },
+      redeemMethods: [],
+    },
+    travel_agency: {
+      productTypes: {
+        presale_voucher: {
+          orderStatuses: ['pending_pay', 'to_book', 'booking_confirming', 'booked', 'pending_travel', 'in_travel', 'completed', 'refunding', 'cancelled', 'refund_success', 'refund_fail'],
+        },
+      },
+      redeemMethods: [],
+    },
+  };
 
-  const redeemMethodOptions = [
-    { value: 'all', label: '全部履约方式' },
-    { value: 'voucher', label: '到店套餐' },
-    { value: 'self_order', label: '自提' },
-    { value: 'delivery', label: '外卖' },
-  ];
+  const allProductTypeMap: Record<string, string> = {
+    group_voucher: '团购券',
+    presale_voucher: '预售券',
+    calendar_room: '日历房',
+    calendar_ticket: '日历票',
+  };
 
-  const orderStatusOptions = [
-    { value: 'all', label: '全部状态' },
-    { value: 'pending_pay', label: '待支付' },
-    { value: 'unused', label: '待使用' },
-    { value: 'pending_accept', label: '待接单' },
-    { value: 'preparing', label: '制作中' },
-    { value: 'delivering', label: '配送中' },
-    { value: 'waiting_pickup', label: '待取餐' },
-    { value: 'picked_up', label: '已取餐' },
-    { value: 'to_book', label: '待预约' },
-    { value: 'booking_confirming', label: '预约确认中' },
-    { value: 'booked', label: '预约成功' },
-    { value: 'checked_in', label: '已入住' },
-    { value: 'entered', label: '已入园' },
-    { value: 'pending_travel', label: '待出行' },
-    { value: 'in_travel', label: '行程中' },
-    { value: 'refunding', label: '退款中' },
-    { value: 'refund_success', label: '退款成功' },
-    { value: 'refund_fail', label: '退款失败' },
-    { value: 'cancelled', label: '已取消' },
-    { value: 'completed', label: '已完成' },
-  ];
+  const allRedeemMethodMap: Record<string, string> = {
+    voucher: '到店套餐',
+    self_order: '自提',
+    delivery: '外卖',
+  };
+
+  const allOrderStatusMap: Record<string, string> = {
+    pending_pay: '待支付',
+    unused: '待使用',
+    pending_accept: '待接单',
+    preparing: '制作中',
+    delivering: '配送中',
+    waiting_pickup: '待取餐',
+    picked_up: '已取餐',
+    to_book: '待预约',
+    booking_confirming: '预约确认中',
+    booked: '预约成功',
+    checked_in: '已入住',
+    entered: '已入园',
+    pending_travel: '待出行',
+    in_travel: '行程中',
+    refunding: '退款中',
+    refund_success: '退款成功',
+    refund_fail: '退款失败',
+    cancelled: '已取消',
+    completed: '已完成',
+  };
+
+  const getProductTypeOptions = (category: string) => {
+    const options: { value: string; label: string }[] = [
+      { value: 'all', label: '全部类型' },
+    ];
+    if (category === 'all') {
+      Object.entries(allProductTypeMap).forEach(([value, label]) => {
+        options.push({ value, label });
+      });
+    } else {
+      const config = FILTER_CONFIG[category];
+      if (config) {
+        Object.keys(config.productTypes).forEach(value => {
+          options.push({ value, label: allProductTypeMap[value] || value });
+        });
+      }
+    }
+    return options;
+  };
+
+  const getRedeemMethodOptions = (category: string, _productType: string) => {
+    const options: { value: string; label: string }[] = [
+      { value: 'all', label: '全部履约方式' },
+    ];
+    if (category === 'all') return [];
+    const config = FILTER_CONFIG[category];
+    if (!config || config.redeemMethods.length === 0) return [];
+    config.redeemMethods.forEach(value => {
+      options.push({ value, label: allRedeemMethodMap[value] || value });
+    });
+    return options;
+  };
+
+  const getOrderStatusOptions = (category: string, productType: string) => {
+    const options: { value: string; label: string }[] = [
+      { value: 'all', label: '全部状态' },
+    ];
+    if (category === 'all') {
+      Object.entries(allOrderStatusMap).forEach(([value, label]) => {
+        options.push({ value, label });
+      });
+      return options;
+    }
+    const config = FILTER_CONFIG[category];
+    if (!config) return options;
+    let statuses: string[] = [];
+    if (productType === 'all') {
+      const seen = new Set<string>();
+      Object.values(config.productTypes).forEach(pt => {
+        pt.orderStatuses.forEach(s => {
+          if (!seen.has(s)) {
+            seen.add(s);
+            statuses.push(s);
+          }
+        });
+      });
+    } else {
+      const ptConfig = config.productTypes[productType];
+      if (ptConfig) {
+        statuses = ptConfig.orderStatuses;
+      }
+    }
+    statuses.forEach(value => {
+      options.push({ value, label: allOrderStatusMap[value] || value });
+    });
+    return options;
+  };
+
+  const productTypeOptions = getProductTypeOptions(filterCategory);
+  const redeemMethodOptions = getRedeemMethodOptions(filterCategory, filterProductType);
+  const orderStatusOptions = getOrderStatusOptions(filterCategory, filterProductType);
+
+  const handleCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    setFilterProductType('all');
+    setFilterRedeemMethod('all');
+    setFilterOrderStatus('all');
+    setFilterFoodMainStatus('all');
+    setFilterFoodSubStatus('all');
+  };
+
+  const handleProductTypeChange = (value: string) => {
+    setFilterProductType(value);
+    setFilterRedeemMethod('all');
+    setFilterOrderStatus('all');
+    setFilterFoodMainStatus('all');
+    setFilterFoodSubStatus('all');
+  };
+
+  const handleRedeemMethodChange = (value: string) => {
+    setFilterRedeemMethod(value);
+    setFilterFoodMainStatus('all');
+    setFilterFoodSubStatus('all');
+  };
 
   const handleActionClick = (order: DemoOrder, actionLabel: string) => {
     if (actionLabel.includes('帮我约')) {
@@ -3120,7 +3480,17 @@ export function AiOrderCardDemo() {
     if (filterCategory !== 'all' && order.category !== filterCategory) return false;
     if (filterProductType !== 'all' && order.productType !== filterProductType) return false;
     if (filterRedeemMethod !== 'all' && order.redeemMethod !== filterRedeemMethod) return false;
-    if (filterOrderStatus !== 'all' && order.orderStatus !== filterOrderStatus) return false;
+    if (order.category === 'food') {
+      if (filterFoodMainStatus !== 'all') {
+        const mainStatus = getDemoOrderMainStatus(order);
+        if (mainStatus !== filterFoodMainStatus) return false;
+      }
+      if (filterFoodSubStatus !== 'all') {
+        if (order.orderStatus !== filterFoodSubStatus) return false;
+      }
+    } else {
+      if (filterOrderStatus !== 'all' && order.orderStatus !== filterOrderStatus) return false;
+    }
     return true;
   });
 
@@ -3129,6 +3499,8 @@ export function AiOrderCardDemo() {
     setFilterProductType('all');
     setFilterRedeemMethod('all');
     setFilterOrderStatus('all');
+    setFilterFoodMainStatus('all');
+    setFilterFoodSubStatus('all');
   };
 
   const renderButtonIcon = (label: string) => {
@@ -3254,6 +3626,46 @@ export function AiOrderCardDemo() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            ) : order.extension.type === 'pickup_completed' ? (
+              <div
+                className="demo-pickup-completed"
+                onClick={() => {
+                  setExpandedDelivery(expandedDelivery === order.id ? null : order.id);
+                }}
+              >
+                <div className="demo-pickup-summary">
+                  <span className="demo-pickup-summary-text">{order.extension.summary}</span>
+                  <span className="demo-pickup-arrow">
+                    {expandedDelivery === order.id ? '∧' : '∨'}
+                  </span>
+                </div>
+                {expandedDelivery === order.id && (
+                  <div className="demo-pickup-detail">
+                    {order.extension.steps && (
+                      <div className="demo-progress-steps">
+                        {order.extension.steps.map((step, i) => (
+                          <div key={i} className={`demo-step ${step.state}`}>
+                            <div className="demo-step-dot"></div>
+                            <div className="demo-step-label">{step.label}</div>
+                            {step.time && <div className="demo-step-time">{step.time}</div>}
+                            {i < order.extension!.steps!.length - 1 && <div className="demo-step-line"></div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {order.extension.info && (
+                      <div className="demo-info-list">
+                        {order.extension.info.map((item, i) => (
+                          <div key={i} className="demo-info-item">
+                            <span className="demo-info-label">{item.label}</span>
+                            <span className="demo-info-value">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -3827,12 +4239,7 @@ export function AiOrderCardDemo() {
                   <button
                     key={opt.value}
                     className={`demo-filter-chip ${filterCategory === opt.value ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterCategory(opt.value);
-                      if (opt.value !== 'food') {
-                        setFilterRedeemMethod('all');
-                      }
-                    }}
+                    onClick={() => handleCategoryChange(opt.value)}
                   >
                     {opt.label}
                   </button>
@@ -3848,7 +4255,7 @@ export function AiOrderCardDemo() {
                   <button
                     key={opt.value}
                     className={`demo-filter-chip ${filterProductType === opt.value ? 'active' : ''}`}
-                    onClick={() => setFilterProductType(opt.value)}
+                    onClick={() => handleProductTypeChange(opt.value)}
                   >
                     {opt.label}
                   </button>
@@ -3856,7 +4263,7 @@ export function AiOrderCardDemo() {
               </div>
             </div>
           </div>
-          {filterCategory === 'food' && (
+          {redeemMethodOptions.length > 0 && (
             <div className="demo-filter-row">
               <div className="demo-filter-group">
                 <div className="demo-filter-label">履约方式</div>
@@ -3865,7 +4272,7 @@ export function AiOrderCardDemo() {
                     <button
                       key={opt.value}
                       className={`demo-filter-chip ${filterRedeemMethod === opt.value ? 'active' : ''}`}
-                      onClick={() => setFilterRedeemMethod(opt.value)}
+                      onClick={() => handleRedeemMethodChange(opt.value)}
                     >
                       {opt.label}
                     </button>
@@ -3877,17 +4284,88 @@ export function AiOrderCardDemo() {
           <div className="demo-filter-row">
             <div className="demo-filter-group">
               <div className="demo-filter-label">订单状态</div>
-              <div className="demo-filter-options">
-                {orderStatusOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    className={`demo-filter-chip ${filterOrderStatus === opt.value ? 'active' : ''}`}
-                    onClick={() => setFilterOrderStatus(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              {filterCategory === 'food' ? (
+                <div className="demo-filter-status-stack">
+                  <div className="demo-filter-options">
+                    {FOOD_MAIN_STATUSES.map(opt => (
+                      <button
+                        key={opt.value}
+                        className={`demo-filter-chip ${filterFoodMainStatus === opt.value ? 'active' : ''}`}
+                        onClick={() => {
+                          setFilterFoodMainStatus(opt.value);
+                          setFilterFoodSubStatus('all');
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {filterFoodMainStatus === 'redeemed' && (
+                    <div className="demo-filter-substatus">
+                      <div className="demo-filter-substatus-group">
+                        <div className="demo-filter-substatus-label">自提</div>
+                        <div className="demo-filter-options">
+                          <button
+                            className={`demo-filter-chip small ${filterFoodSubStatus === 'all' ? 'active' : ''}`}
+                            onClick={() => setFilterFoodSubStatus('all')}
+                          >
+                            全部
+                          </button>
+                          {FOOD_SUB_STATUSES.self_order.map(opt => (
+                            <button
+                              key={opt.value}
+                              className={`demo-filter-chip small ${filterFoodSubStatus === opt.value ? 'active' : ''}`}
+                              onClick={() => setFilterFoodSubStatus(opt.value)}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="demo-filter-substatus-group">
+                        <div className="demo-filter-substatus-label">配送</div>
+                        <div className="demo-filter-options">
+                          {FOOD_SUB_STATUSES.delivery.map(opt => (
+                            <button
+                              key={opt.value}
+                              className={`demo-filter-chip small ${filterFoodSubStatus === opt.value ? 'active' : ''}`}
+                              onClick={() => setFilterFoodSubStatus(opt.value)}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="demo-filter-substatus-group">
+                        <div className="demo-filter-substatus-label">券码核销</div>
+                        <div className="demo-filter-options">
+                          {FOOD_SUB_STATUSES.voucher.map(opt => (
+                            <button
+                              key={opt.value}
+                              className={`demo-filter-chip small ${filterFoodSubStatus === opt.value ? 'active' : ''}`}
+                              onClick={() => setFilterFoodSubStatus(opt.value)}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="demo-filter-options">
+                  {orderStatusOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      className={`demo-filter-chip ${filterOrderStatus === opt.value ? 'active' : ''}`}
+                      onClick={() => setFilterOrderStatus(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="demo-filter-footer">
@@ -3905,7 +4383,15 @@ export function AiOrderCardDemo() {
             ) : (
               filteredOrders.map((order, idx) => (
                 <div key={`${order.id}-${idx}`} className="demo-card-item">
-                  <div className="demo-card-label">{order.categoryLabel} · {order.productTypeLabel} · {order.orderStatusLabel}</div>
+                  <div className="demo-card-label">
+                    {order.categoryLabel} · {order.productTypeLabel} · {
+                      order.category === 'food' && FOOD_SUB_STATUS_TO_MAIN[order.orderStatus]
+                        ? `${getDemoOrderMainStatusLabel(order)} / ${order.orderStatusLabel}`
+                        : order.category === 'food' && FOOD_MAIN_STATUS_LABELS[order.orderStatus]
+                          ? FOOD_MAIN_STATUS_LABELS[order.orderStatus]
+                          : order.orderStatusLabel
+                    }
+                  </div>
                   {renderOrderCard(order, 'full')}
                 </div>
               ))

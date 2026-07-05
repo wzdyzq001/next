@@ -31,9 +31,10 @@ interface TestPanelProps {
   onOpenStatusFlowDemo?: () => void;
   onOpenInteractionMap?: () => void;
   onOpenOrderCardDemo?: () => void;
+  onOpenReachDemo?: () => void;
 }
 
-const TestPanel: React.FC<TestPanelProps> = ({ onOpenStatusFlowDemo, onOpenInteractionMap, onOpenOrderCardDemo }) => {
+const TestPanel: React.FC<TestPanelProps> = ({ onOpenStatusFlowDemo, onOpenInteractionMap, onOpenOrderCardDemo, onOpenReachDemo }) => {
   const {
     openAssistant,
     closeAssistant,
@@ -626,6 +627,30 @@ const TestPanel: React.FC<TestPanelProps> = ({ onOpenStatusFlowDemo, onOpenInter
             }}
           >
             🎴 团小帮 · 订单卡片 Demo
+          </button>
+        </div>
+      )}
+
+      {onOpenReachDemo && (
+        <div
+          style={{
+            padding: '12px',
+            paddingTop: onOpenOrderCardDemo || onOpenInteractionMap || onOpenStatusFlowDemo ? '0' : '12px',
+            borderBottom: '1px solid #e2e8f0',
+          }}
+        >
+          <button
+            onClick={onOpenReachDemo}
+            style={{
+              ...btnStyle('#ec4899'),
+              width: '100%',
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            }}
+          >
+            🎯 AI 助手触达功能 Demo
           </button>
         </div>
       )}

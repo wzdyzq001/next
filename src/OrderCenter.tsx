@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { ORDER_LIST, fetchOrderById } from './mock';
 import {
   addHotelLocalDays,
@@ -25,6 +25,16 @@ import type { HotelOrderStatusText, OrderData, OrderListItem } from './types';
 import { toStandardCategory, getDisplayCategory } from './types';
 import { getReminderByOrder, formatReminderBubbleText, getDaysUntilExpiry, setReminder, cancelReminder, getQuickOptions, formatExpiryDateTime, formatExpiryStatusText, getValidityEndDate, subscribeReminders, buildNoticeTags, calcNaturalDayDiff } from './redeemReminder';
 import { useAiAssistantContext, AIAssistantIcon } from './components/AiAssistant';
+import {
+  OrderCardReachBar,
+  ReachBubble,
+  useReachBubble,
+  buildReachConfigsForOrder,
+  ReachEngine,
+  resolveLongText,
+} from './components/AiAssistant/reach';
+import type { ReachConfig, ReachMatchContext } from './components/AiAssistant/reach/types';
+import { inferMainStatusFromText, getMainStatusLabel, getMainStatusColor, inferFoodSubStatusFromText, getFoodSubStatusLabel, getFoodSubStatusFulfillmentType, getFoodSubStatusGroup, getFulfillmentTypeLabel } from './components/AiAssistant/orderStatusMapping';
 
 export interface ReservationInfoCardData {
   orderId?: string;
@@ -1745,6 +1755,87 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
   const [travelConfirmingDeadline, setTravelConfirmingDeadline] = useState<number | null>(null);
   const [travelCancelConfirmOpen, setTravelCancelConfirmOpen] = useState(false);
   const [reservationCancelConfirmOpen, setReservationCancelConfirmOpen] = useState(false);
+  const detailScrollRef = useRef<HTMLDivElement | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const { reachPayload, reservationsByOrder: ctxReservations, openAssistant: openAssistantFromCtx, clearReachPayload } = useAiAssistantContext();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const reachBubbleConfig = useMemo(() => {
+    if (!listItem) return null;
+
+    const reservation = reservationInfo || ctxReservations?.[orderId] || null;
+
+    if (reachPayload && reachPayload.orderId === orderId) {
+      return reachPayload.config;
+    }
+
+    const allConfigs = buildReachConfigsForOrder(orderId);
+    const engine = new ReachEngine({ configs: allConfigs });
+
+    const reminder = getReminderByOrder(orderId);
+
+    const ctx: ReachMatchContext = {
+      order: listItem,
+      reservation: reservation as any,
+      reminder: reminder as any,
+      now,
+    };
+
+    const result = engine.match('detail_bubble', ctx);
+    return result.matched;
+  }, [listItem, orderId, reachPayload, reservationInfo, ctxReservations, now, reminderVersion]);
+
+  const {
+    bubbleType,
+    expand: expandBubble,
+    collapse: collapseBubble,
+    isScrolling,
+    isHidden: isBubbleHidden,
+  } = useReachBubble({
+    initialType: reachBubbleConfig?.bubbleType || 'long',
+    autoCollapse: reachBubbleConfig?.collapseStrategy === 'auto_collapse',
+    autoCollapseSeconds: 3,
+    scrollHide: true,
+    scrollExpand: true,
+    scrollDebounceMs: reachBubbleConfig?.scrollDebounceMs || 150,
+    scrollTarget: detailScrollRef.current,
+  });
+
+  const handleReachBubbleClick = useCallback(() => {
+    if (!reachBubbleConfig || !listItem) return;
+
+    const reminder = getReminderByOrder(orderId);
+
+    const ctx: ReachMatchContext = {
+      order: listItem,
+      reservation: (reservationInfo || ctxReservations?.[orderId] || null) as any,
+      reminder: reminder as any,
+      now: Date.now(),
+    };
+
+    const guideMsg = reachBubbleConfig.guideMessage;
+    if (guideMsg) {
+      let text = '';
+      if (typeof guideMsg.text === 'function') {
+        text = (guideMsg.text as any)(ctx);
+      } else {
+        text = guideMsg.text as string;
+      }
+      openAssistantFromCtx(orderId, 'bubble', {
+        text,
+        actions: guideMsg.actions,
+        quickReplies: guideMsg.quickReplies,
+      });
+    } else {
+      openAssistantFromCtx(orderId, 'bubble');
+    }
+  }, [reachBubbleConfig, listItem, orderId, reservationInfo, ctxReservations, openAssistantFromCtx]);
 
   useEffect(() => {
     fetchOrderById(orderId).then(setDetail);
@@ -1818,6 +1909,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
     if (!presaleConfirmingDeadline) return;
     if (reservationNow >= presaleConfirmingDeadline) {
       setLocalStatusText('预约成功');
+
       setPresaleConfirmingDeadline(null);
     }
   }, [presaleConfirmingDeadline, reservationNow]);
@@ -1829,6 +1921,38 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
       setTravelConfirmingDeadline(null);
     }
   }, [travelConfirmingDeadline, reservationNow]);
+
+  useEffect(() => {
+    if (!reachPayload) return;
+    if (reachPayload.orderId !== orderId) return;
+    if (!listItem) return;
+
+    const guideMsg = reachPayload.config.guideMessage;
+    if (guideMsg) {
+      const reminder = getReminderByOrder(orderId);
+      const ctx: ReachMatchContext = {
+        order: listItem,
+        reservation: (reservationInfo || ctxReservations?.[orderId] || null) as any,
+        reminder: reminder as any,
+        now: Date.now(),
+      };
+      let text = '';
+      if (typeof guideMsg.text === 'function') {
+        text = (guideMsg.text as any)(ctx);
+      } else {
+        text = guideMsg.text as string;
+      }
+      openAssistantFromCtx(orderId, 'bubble', {
+        text,
+        actions: guideMsg.actions,
+        quickReplies: guideMsg.quickReplies,
+      });
+    } else {
+      openAssistantFromCtx(orderId, 'bubble');
+    }
+
+    clearReachPayload();
+  }, [reachPayload, orderId, listItem, reservationInfo, ctxReservations, openAssistantFromCtx, clearReachPayload]);
 
   const openPresaleBooking = () => {
     setPresaleBookingOpen(true);
@@ -2032,18 +2156,25 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
   const isScenicGroupBuyDesignState = scenicOrder && listItem.scenicProductType === 'group_buy';
   const displayStatusText = hotelView?.status ?? localStatusText ?? listItem.statusText;
   const displayListItem = { ...listItem, statusText: displayStatusText, statusColor: hotelOrder ? getHotelStatusColor(displayStatusText as HotelOrderStatusText) : listItem.statusColor };
-  const isUnpaid = displayStatusText === '待支付';
-  const isFoodOrFunUnpaid = isUnpaid && ['food', 'general'].includes(toStandardCategory(listItem.category));
+
+  const stdCat = toStandardCategory(listItem.category);
+  const mainStatus = inferMainStatusFromText(displayStatusText, stdCat);
+  const mainStatusLabel = getMainStatusLabel(mainStatus as any);
+  const mainStatusColor = getMainStatusColor(mainStatus as any);
+  const displayHeaderStatusText = hotelView?.title ?? mainStatusLabel;
+
+  const isUnpaid = mainStatus === 'pending_pay';
+  const isFoodOrFunUnpaid = isUnpaid && ['food', 'general'].includes(stdCat);
   const isScenicUnpaid = isUnpaid && isScenicGroupBuyDesignState;
-  const isUnredeemed = ['待使用', '待预约', '预约确认中', '预约成功', '预订确认中', '预订成功'].includes(displayStatusText);
+  const isUnredeemed = mainStatus === 'unused';
   const isScenicUnredeemed = isUnredeemed && isScenicGroupBuyDesignState;
-  const isCompleted = displayStatusText === '交易完成';
+  const isCompleted = mainStatus === 'redeemed';
   const isScenicCompleted = isCompleted && isScenicGroupBuyDesignState;
-  const isCanceledOrRefunded = ['订单取消', '退款成功', '退款申请中', '退款失败'].includes(displayStatusText);
-  const isScenicCanceled = displayStatusText === '订单取消' && isScenicGroupBuyDesignState;
-  const isRefunding = displayStatusText === '退款申请中';
-  const isRefunded = displayStatusText === '退款成功';
-  const isRefundFailed = displayStatusText === '退款失败';
+  const isCanceledOrRefunded = ['cancelled', 'refunding', 'refund_success', 'refund_fail'].includes(mainStatus);
+  const isScenicCanceled = mainStatus === 'cancelled' && isScenicGroupBuyDesignState;
+  const isRefunding = mainStatus === 'refunding';
+  const isRefunded = mainStatus === 'refund_success';
+  const isRefundFailed = mainStatus === 'refund_fail';
   const isScenicCalendarDesignState = scenicOrder && listItem.scenicProductType === 'calendar_ticket';
   const isScenicCalendarPaying = isScenicCalendarDesignState && isUnpaid;
   const isScenicCalendarPendingBook = isScenicCalendarDesignState && displayStatusText === '待预约';
@@ -2186,11 +2317,11 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
     if (isHotelPresaleDesignState && hotelView) return hotelView.subtitle;
     if (hotelView) return hotelView.subtitle;
     if (isUnredeemed) return `请在 ${validUntil}(含) 前到店消费`;
-    if (displayStatusText === '交易完成') return '感谢购买，期待再次光临';
-    if (displayStatusText === '退款成功') return '钱款已退回';
-    if (displayStatusText === '退款申请中') return '审核通过后，钱款预计1-2个自然日到账';
-    if (displayStatusText === '退款失败') return '请联系抖音客服咨询详情';
-    if (displayStatusText === '订单取消') return '订单已自动取消';
+    if (isCompleted) return '感谢购买，期待再次光临';
+    if (isRefunded) return '钱款已退回';
+    if (isRefunding) return '审核通过后，钱款预计1-2个自然日到账';
+    if (isRefundFailed) return '请联系抖音客服咨询详情';
+    if (mainStatus === 'cancelled') return '订单已自动取消';
     return '订单信息已更新';
   })();
   const bottomActions = (() => {
@@ -2365,6 +2496,12 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
     }
     if (isUnpaid) return [{ label: '立即支付', type: 'solid' as const }];
     if (isUnredeemed) {
+      if (['food', 'general'].includes(stdCat)) {
+        return [
+          { label: '再来一单', type: 'outline' as const },
+          { label: '去使用', type: 'solid' as const },
+        ];
+      }
       return [
         { label: '赠送好友', type: 'outline' as const },
         { label: '申请退款', type: 'outline' as const },
@@ -2397,6 +2534,13 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
   };
 
   const handleBottomAction = (label: string) => {
+    if (label === '去使用') {
+      onChatWithOrder(displayListItem);
+      return;
+    }
+    if (label === '再来一单') {
+      return;
+    }
     if (isScenicCalendarDesignState) {
       if (label === '立即预约') {
         openPresaleBooking();
@@ -2523,7 +2667,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
                     {isTravelPresalePendingBook && <svg className="travel-header-clock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>}
                     {displayStatusText}
                   </>
-                ) : (hotelView?.title ?? displayStatusText)}
+                ) : displayHeaderStatusText}
                 {hotelCountdownText && <span className="hotel-header-countdown"> {hotelCountdownText}</span>}
               </h2>
               <p>{hotelReservationState?.notice ?? statusSubtitle}</p>
@@ -2538,7 +2682,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
         </div>
       </div>
 
-      <div className="oc-detail-scroll-v3">
+      <div className="oc-detail-scroll-v3" ref={detailScrollRef}>
         {/* Merged Card: Product + QR */}
         {isHotelPresaleDesignState && (
           <>
@@ -5181,26 +5325,49 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
           <>
             <div className="oc-detail-bb-ai">
               <div className="oc-detail-ai-btn-wrapper">
-                {(() => {
-                  void reminderVersion;
-                  const reminder = getReminderByOrder(orderId);
-                  if (!reminder || reminder.status !== 'active') return null;
-                  const diffDays = Math.max(0, calcNaturalDayDiff(reminder.remindAt));
-                  const bubbleText = formatReminderBubbleText(diffDays);
-                  return (
-                    <div
-                      className="redeem-reminder-bubble clickable"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setReminderSheetOpen(true);
+                {reachBubbleConfig && (
+                  <div style={{ position: 'absolute', left: 0, bottom: '100%', width: 'auto', marginBottom: 8 }}>
+                    <ReachBubble
+                      config={reachBubbleConfig}
+                      ctx={{
+                        order: listItem!,
+                        reservation: (reservationInfo || ctxReservations?.[orderId] || null) as any,
+                        reminder: getReminderByOrder(orderId) as any,
+                        now,
                       }}
-                    >
-                      <span className="bubble-icon">⏰</span>
-                      <span className="bubble-text">{bubbleText}</span>
-                    </div>
-                  );
-                })()}
-                <button className="oc-detail-ai-btn-v3" onClick={() => onChatWithOrder(displayListItem)}>
+                      bubbleType={bubbleType}
+                      isHidden={isBubbleHidden}
+                      arrowOffset={24}
+                      onClick={handleReachBubbleClick}
+                    />
+                  </div>
+                )}
+                <button className="oc-detail-ai-btn-v3" onClick={() => {
+                  if (reachBubbleConfig && reachBubbleConfig.guideMessage) {
+                    const reminder = getReminderByOrder(orderId);
+                    const ctx: ReachMatchContext = {
+                      order: listItem!,
+                      reservation: (reservationInfo || ctxReservations?.[orderId] || null) as any,
+                      reminder: reminder as any,
+                      now: Date.now(),
+                    };
+                    const guideMsg = reachBubbleConfig.guideMessage;
+                    let text = '';
+                    if (typeof guideMsg.text === 'function') {
+                      text = (guideMsg.text as any)(ctx);
+                    } else {
+                      text = guideMsg.text as string;
+                    }
+                    openAssistantFromCtx(orderId, 'bubble', {
+                      text,
+                      actions: guideMsg.actions,
+                      quickReplies: guideMsg.quickReplies,
+                    });
+                    clearReachPayload();
+                  } else {
+                    onChatWithOrder(displayListItem);
+                  }
+                }}>
                   <AIAssistantIcon size={22} />
                   <span>团小帮</span>
                 </button>
@@ -5391,7 +5558,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
 
 export default function OrderCenter({
   onChatWithOrder,
-  reservationsByOrder = {},
+  reservationsByOrder: propReservationsByOrder = {},
   onCancelReservation,
   onRebookReservation,
   reservationNow,
@@ -5399,6 +5566,8 @@ export default function OrderCenter({
   onInitialDetailConsumed,
   reservationTrigger,
   onReservationTriggerConsumed,
+  reachBarRenderer,
+  onOrderClick,
 }: {
   onChatWithOrder: (payload: string | OrderListItem) => void;
   reservationsByOrder?: Record<string, ReservationInfoCardData>;
@@ -5409,8 +5578,13 @@ export default function OrderCenter({
   onInitialDetailConsumed?: () => void;
   reservationTrigger?: { orderId: string; category: string; productType?: string } | null;
   onReservationTriggerConsumed?: () => void;
+  reachBarRenderer?: (order: OrderListItem) => React.ReactNode;
+  onOrderClick?: (order: OrderListItem) => void;
 }) {
-  const { hasUnread } = useAiAssistantContext();
+  const { hasUnread, reservationsByOrder: ctxReservations, setReachPayload, openAssistant } = useAiAssistantContext();
+  const reservationsByOrder = ctxReservations && Object.keys(ctxReservations).length > 0
+    ? ctxReservations
+    : propReservationsByOrder;
   const storedPositionRef = useRef<OrderListPositionSnapshot | null>(
     typeof window === 'undefined' ? null : readOrderListPositionSnapshot(window.sessionStorage),
   );
@@ -5421,22 +5595,135 @@ export default function OrderCenter({
   const [selectedOrder, setSelectedOrder] = useState<OrderListItem | null>(initialDetailOrder ?? null);
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'unredeemed' | 'unreviewed' | 'refunded'>(initialFilter ?? 'unredeemed');
   const [autoOpenReservation, setAutoOpenReservation] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [reminderVersion, setReminderVersion] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeReminders(() => {
+      setReminderVersion((v) => v + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   const filteredOrders = useMemo(() => {
-    return ORDER_LIST.filter(order => {
+    const list = ORDER_LIST.filter(order => {
       if (order.category === 'show') return false;
       if (order.category === 'transport') return false;
       const text = order.statusText;
+      const stdCat = toStandardCategory(order.category);
+      const mainStatus = inferMainStatusFromText(text, stdCat);
       if (filter === 'all') return true;
-      if (filter === 'unpaid') return text === '待支付';
+      if (filter === 'unpaid') return mainStatus === 'pending_pay';
       if (filter === 'unredeemed') {
-        return ['待使用', '待预约', '预约确认中', '预约成功', '预订确认中', '预订成功'].includes(text);
+        return mainStatus === 'unused';
       }
-      if (filter === 'unreviewed') return text === '交易完成';
-      if (filter === 'refunded') return ['退款成功', '退款申请中', '退款失败'].includes(text);
+      if (filter === 'unreviewed') return mainStatus === 'redeemed';
+      if (filter === 'refunded') return ['refunding', 'refund_success', 'refund_fail'].includes(mainStatus);
       return true;
     });
+
+    if (filter === 'unreviewed') {
+      const foodSelf: Array<{ order: typeof list[number]; subStatus: any }> = [];
+      const foodDelivery: Array<{ order: typeof list[number]; subStatus: any }> = [];
+      const others: typeof list = [];
+
+      for (const order of list) {
+        const stdCat = toStandardCategory(order.category);
+        if (stdCat !== 'food') {
+          others.push(order);
+          continue;
+        }
+        const subStatus = inferFoodSubStatusFromText(order.statusText, order.fulfillmentModes);
+        if (!subStatus) {
+          others.push(order);
+          continue;
+        }
+        const fType = getFoodSubStatusFulfillmentType(subStatus);
+        if (fType === 'self_order') {
+          foodSelf.push({ order, subStatus });
+        } else if (fType === 'delivery') {
+          foodDelivery.push({ order, subStatus });
+        } else {
+          others.push(order);
+        }
+      }
+
+      const SELF_ORDER = ['self_01_pending_accept', 'self_02_accepted', 'self_03_preparing', 'self_04_waiting_pickup', 'self_05_picked_up'];
+      const DELIVERY_ORDER = ['delivery_01_pending_accept', 'delivery_02_accepted', 'delivery_03_preparing', 'delivery_04_waiting_rider', 'delivery_05_delivering', 'delivery_06_delivered'];
+
+      const byNodeOrder = (a: { subStatus: any }, b: { subStatus: any }, orderRef: string[]) =>
+        orderRef.indexOf(a.subStatus) - orderRef.indexOf(b.subStatus);
+
+      foodSelf.sort((a, b) => byNodeOrder(a, b, SELF_ORDER));
+      foodDelivery.sort((a, b) => byNodeOrder(a, b, DELIVERY_ORDER));
+
+      return [...foodSelf.map(x => x.order), ...foodDelivery.map(x => x.order), ...others];
+    }
+
+    return list;
   }, [filter]);
+
+  const reachEngineRef = useRef<ReachEngine | null>(null);
+
+  const getReachEngine = (): ReachEngine => {
+    if (!reachEngineRef.current) {
+      const allConfigs: ReachConfig[] = [];
+      const orderIds = new Set(ORDER_LIST.map(o => o.orderId));
+      orderIds.forEach(orderId => {
+        const configs = buildReachConfigsForOrder(orderId);
+        allConfigs.push(...configs);
+      });
+      reachEngineRef.current = new ReachEngine({ configs: allConfigs });
+    }
+    return reachEngineRef.current;
+  };
+
+  const renderReachBar = (order: OrderListItem) => {
+    if (filter === 'unpaid') return null;
+
+    const engine = getReachEngine();
+    const reservation = reservationsByOrder?.[order.orderId] || null;
+    const reminder = getReminderByOrder(order.orderId);
+
+    const ctx: ReachMatchContext = {
+      order,
+      reservation: reservation as any,
+      reminder: reminder as any,
+      now,
+    };
+
+    const result = engine.match('order_card_bar', ctx);
+    const matched = result.matched;
+    if (!matched) return null;
+
+    const handleClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (matched.displayMode === 'guide_clickable' && matched.guideMessage) {
+        setReachPayload({
+          reachId: matched.reachId,
+          config: matched,
+          orderId: order.orderId,
+        });
+        setSelectedOrder(order);
+        setView('detail');
+      }
+    };
+
+    return (
+      <OrderCardReachBar
+        config={matched}
+        ctx={ctx}
+        onClick={handleClick}
+      />
+    );
+  };
 
   useEffect(() => {
     if (!initialDetailOrder) return;
@@ -5501,6 +5788,9 @@ export default function OrderCenter({
     }
     setSelectedOrder(order);
     setView('detail');
+    if (onOrderClick) {
+      onOrderClick(order);
+    }
   };
 
   if (view === 'detail' && selectedOrder) {
@@ -5584,7 +5874,13 @@ export default function OrderCenter({
                   const disp = getDisplayCategory(order.category);
                   return <span className={`uoc-cat-tag uoc-cat-${disp.colorKey}`}>{disp.label}</span>;
                 })()}
-                <div className={`oc-card-status-v2 status-${order.statusColor}`}>{order.statusText}</div>
+                {(() => {
+                  const stdCat = toStandardCategory(order.category);
+                  const mainStatus = inferMainStatusFromText(order.statusText, stdCat);
+                  const displayStatusLabel = getMainStatusLabel(mainStatus as any) || order.statusText;
+                  const displayStatusColor = getMainStatusColor(mainStatus as any) || order.statusColor;
+                  return <div className={`oc-card-status-v2 status-${displayStatusColor}`}>{displayStatusLabel}</div>;
+                })()}
               </div>
               <div className="oc-card-body-v2">
                 <div className="oc-card-thumb-v2">{order.thumbnail}</div>
@@ -5631,14 +5927,51 @@ export default function OrderCenter({
                         if (fm.includes('delivery')) labels.push({k: 'delivery', t: '预约配送'});
                         return labels.map(l => <span key={l.k} className={`food-fulfill-list-tag food-ff-${l.k}`}>{l.t}</span>);
                       })()}
+                      {(() => {
+                        const stdCat = toStandardCategory(order.category);
+                        if (stdCat !== 'food') return null;
+                        const mainStatus = inferMainStatusFromText(order.statusText, stdCat);
+                        if (mainStatus !== 'redeemed') return null;
+                        const subStatus = inferFoodSubStatusFromText(order.statusText, order.fulfillmentModes);
+                        if (!subStatus) return null;
+                        const subStatusLabel = getFoodSubStatusLabel(subStatus);
+                        const fulfillmentType = getFoodSubStatusFulfillmentType(subStatus);
+                        const fulfillmentLabel = getFulfillmentTypeLabel(fulfillmentType);
+                        const statusGroup = getFoodSubStatusGroup(subStatus);
+                        return (
+                          <span className={`food-sub-status-tag fss-${statusGroup}`}>
+                            {fulfillmentLabel} · {subStatusLabel}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="oc-card-count-v2">共1件</div>
                   </div>
                 </div>
               </div>
+              {reachBarRenderer ? reachBarRenderer(order) : renderReachBar(order)}
               <div className="oc-card-foot-v2">
-                <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); }}>再来一单</button>
-                <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); onChatWithOrder(order.orderId); }}>查看券码</button>
+                {(() => {
+                  const stdCat = toStandardCategory(order.category);
+                  const mainStatus = inferMainStatusFromText(order.statusText, stdCat);
+                  const isUnused = mainStatus === 'unused';
+
+                  if (isUnused && ['food', 'general'].includes(stdCat)) {
+                    return (
+                      <>
+                        <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); }}>再来一单</button>
+                        <button className="oc-btn-v2 oc-btn-primary-v2" onClick={(e) => { e.stopPropagation(); onChatWithOrder(order.orderId); }}>去使用</button>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); }}>再来一单</button>
+                      <button className="oc-btn-v2" onClick={(e) => { e.stopPropagation(); onChatWithOrder(order.orderId); }}>查看券码</button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))

@@ -26,6 +26,9 @@ export function RedeemReminderCard({
   const month = date.getMonth() + 1;
   const day = date.getDate();
   const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const timeStr = `${hour}:${minute}`;
 
   return (
     <div className={`redeem-reminder-card ${isCanceled ? 'is-canceled' : ''}`}>
@@ -34,8 +37,8 @@ export function RedeemReminderCard({
         <div className="redeem-reminder-info">
           <div className="redeem-reminder-title">
             {isCanceled
-              ? `已取消使用提醒 · 原定 ${diffDays}天后（${month}月${day}日 ${weekday}）`
-              : `已为您设置使用提醒 · ${diffDays}天后（${month}月${day}日 ${weekday}）`}
+              ? `已取消使用提醒 · 原定 ${diffDays}天后（${month}月${day}日 ${weekday} ${timeStr}）`
+              : `已为您设置使用提醒 · ${diffDays}天后（${month}月${day}日 ${weekday} ${timeStr}）`}
           </div>
           <div className="redeem-reminder-product">{productName}</div>
         </div>

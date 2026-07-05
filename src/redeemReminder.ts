@@ -249,7 +249,7 @@ function saveReminders(reminders: Record<string, RedeemReminder>): void {
   }
 }
 
-function setReminder(orderId: string, remindAt: number): RedeemReminder {
+function setReminder(orderId: string, remindAt: number, extra?: { productName?: string; validDate?: string }): RedeemReminder {
   const reminders = getReminders();
   const existing = reminders[orderId];
   const now = Date.now();
@@ -260,6 +260,8 @@ function setReminder(orderId: string, remindAt: number): RedeemReminder {
     remindAt,
     createdAt: existing?.createdAt ?? now,
     status: 'active',
+    ...(extra?.productName ? { productName: extra.productName } : {}),
+    ...(extra?.validDate ? { validDate: extra.validDate } : {}),
   };
 
   reminders[orderId] = reminder;
