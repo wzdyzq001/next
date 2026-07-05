@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getReservationTimeout, getReservationTimeoutMinutes } from './src/redeemReminder';
+import { getReservationTimeout, getReservationTimeoutMinutes } from './redeemReminder';
 
 describe('getReservationTimeout', () => {
   it('餐饮（food）返回 5 分钟', () => {

@@ -379,6 +379,8 @@ export {
   isFoodDrinkOrFastFood,
   isHotelPreorder,
   calcNaturalDayDiff,
+  getReservationTimeout,
+  getReservationTimeoutMinutes,
 };
 
 type IndustryCategory = 'food_formal' | 'food_drink_fast' | 'fun' | 'hotel' | 'scenic' | 'travel_agency' | 'transport' | 'other';
@@ -424,4 +426,23 @@ function isFoodDrinkOrFastFood(order: Pick<OrderData, 'category' | 'subCategory'
 
 function isHotelPreorder(order: Pick<OrderData, 'category' | 'hotelInfo'>): boolean {
   return toStandardCategory(order.category) === 'hotel' && Boolean(order.hotelInfo);
+}
+
+const RESERVATION_TIMEOUTS: Record<string, number> = {
+  food: 5 * 60 * 1000,
+  hotel: 30 * 60 * 1000,
+  scenic: 15 * 60 * 1000,
+  play: 15 * 60 * 1000,
+};
+
+const DEFAULT_TIMEOUT = 5 * 60 * 1000;
+
+function getReservationTimeout(category?: string): number {
+  if (!category) return DEFAULT_TIMEOUT;
+  const std = toStandardCategory(category);
+  return RESERVATION_TIMEOUTS[std] || RESERVATION_TIMEOUTS[category] || DEFAULT_TIMEOUT;
+}
+
+function getReservationTimeoutMinutes(category?: string): number {
+  return Math.floor(getReservationTimeout(category) / 60 / 1000);
 }

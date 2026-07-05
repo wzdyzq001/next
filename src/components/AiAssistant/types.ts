@@ -4,6 +4,8 @@ import type { FeatureCardData } from './FeatureCard/types';
 import type { ReservationInfoCardData } from './ReservationInfoCard';
 import type { ReachConfig } from './reach/types';
 
+export type { MessageAction, RedeemReminder, OrderListItem };
+
 export type OrderCategory = 'food' | 'hotel' | 'scenic' | 'general' | 'travel';
 
 export type ProductType = 'voucher' | 'order_takeout' | 'calendar';

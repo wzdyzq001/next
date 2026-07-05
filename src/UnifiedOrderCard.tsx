@@ -60,7 +60,6 @@ function getStatusLabel(order: OrderData): string {
       case 'refund_failed': return '退款失败';
     }
   }
-  
   switch (status) {
     case 'pending_payment': return '待支付';
     case 'unredeemed': return '待使用';
@@ -69,6 +68,7 @@ function getStatusLabel(order: OrderData): string {
     case 'refunding': return '退款申请中';
     case 'refunded': return '退款成功';
     case 'refund_failed': return '退款失败';
+    default: return status;
   }
 }
 

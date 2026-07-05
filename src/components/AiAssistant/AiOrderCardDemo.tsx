@@ -98,7 +98,7 @@ interface DemoOrder {
   hideStoreLine?: boolean;
   urgeReason?: string;
   extension?: {
-    type: 'progress' | 'hotel_stay' | 'refund' | 'payment_countdown' | 'travel_info' | 'pickup_code' | 'delivery_completed' | 'scenic_entry' | 'refund_success';
+    type: 'progress' | 'hotel_stay' | 'refund' | 'payment_countdown' | 'travel_info' | 'pickup_code' | 'pickup_completed' | 'delivery_completed' | 'scenic_entry' | 'refund_success';
     title: string;
     summary?: string;
     pickupCode?: string;

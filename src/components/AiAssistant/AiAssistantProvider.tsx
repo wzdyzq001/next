@@ -809,7 +809,7 @@ export const AiAssistantProvider: React.FC<{
         }
 
         const orderCard = currentOrder
-          ? convertOrderDataToCardData(currentOrder)
+          ? convertOrderDataToCardData(currentOrder as any)
           : convertOrderListItemToCardData(currentOrderListItem!);
 
         if (source === 'order_detail' || source === 'bubble') {
@@ -1353,7 +1353,7 @@ export const AiAssistantProvider: React.FC<{
   ) => {
     const updatedReservation = {
       ...reservation,
-      acceptStatus: newStatus as const,
+      acceptStatus: newStatus,
       ...(newStatus === 'accepted' ? { merchantAcceptAt: Date.now() } : {}),
       ...(newStatus === 'failed' && failReason ? { failReason } : {}),
     };
@@ -1458,11 +1458,12 @@ export const AiAssistantProvider: React.FC<{
       }));
       clearReservationTimers(currentOrderId);
     } else if (reservation.orderId) {
+      const orderId = reservation.orderId;
       setReservationsByOrder((prev) => ({
         ...prev,
-        [reservation.orderId]: { ...canceledReservation, orderId: reservation.orderId },
+        [orderId]: { ...canceledReservation, orderId },
       }));
-      clearReservationTimers(reservation.orderId);
+      clearReservationTimers(orderId);
     }
   }, [updateMessageById, currentOrderId, clearReservationTimers]);
 

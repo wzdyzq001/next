@@ -8,7 +8,7 @@ export type ReachDisplayMode = 'guide_clickable' | 'info_display';
 
 export type ReachBubbleType = 'long' | 'short';
 
-export type ReachCollapseStrategy = 'auto_collapse' | 'scroll_collapse';
+export type ReachCollapseStrategy = 'auto_collapse' | 'scroll_collapse' | 'none';
 
 export type ReachOrderStatus = 'unused' | 'redeemed' | 'refunding' | 'refunded' | 'refund_failed';
 

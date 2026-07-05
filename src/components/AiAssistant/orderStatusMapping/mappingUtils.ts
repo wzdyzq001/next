@@ -94,7 +94,7 @@ export function inferFoodSubStatusFromText(
 
 export function inferFoodMainStatusFromText(
   statusText: string,
-  category?: OrderCategory
+  category?: string
 ): MainOrderStatus {
   if (category && category !== 'food') {
     return inferNonFoodMainStatusFromText(statusText);
@@ -129,7 +129,7 @@ export function inferNonFoodMainStatusFromText(statusText: string): MainOrderSta
 
 export function inferMainStatusFromText(
   statusText: string,
-  category?: OrderCategory
+  category?: string
 ): MainOrderStatus {
   if (category === 'food') {
     return inferFoodMainStatusFromText(statusText, category);

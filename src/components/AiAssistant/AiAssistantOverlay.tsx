@@ -839,7 +839,7 @@ const AiAssistantOverlay: React.FC = () => {
                             } else if (label === '立即配送') {
                               startDelivery(orderCard.id);
                             } else {
-                              executeAction({ label, kind: 'custom' as any });
+                              executeAction({ label, kind: 'custom' } as any);
                             }
                           }}
                           onSuggestionClick={(suggestion) => {
@@ -885,65 +885,65 @@ const AiAssistantOverlay: React.FC = () => {
                       </div>
                     )}
                     {msg.reservationInfo && (
-                      <div className="ai-message-reservation-card">
-                        <ReservationInfoCard
-                          data={
-                            msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
-                              ? reservationsByOrder[msg.reservationInfo.orderId]
-                              : msg.reservationInfo
-                          }
-                          now={now}
-                          onCancel={
-                            (msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
-                              ? reservationsByOrder[msg.reservationInfo.orderId].acceptStatus
-                              : msg.reservationInfo.acceptStatus) === 'pending' ||
-                            (msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
-                              ? reservationsByOrder[msg.reservationInfo.orderId].acceptStatus
-                              : msg.reservationInfo.acceptStatus) === 'accepted'
-                              ? () => {
-                                  const reservationData = msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
-                                    ? reservationsByOrder[msg.reservationInfo.orderId]
-                                    : msg.reservationInfo;
-                                  setCancelTarget({ messageId: msg.id, reservation: reservationData! });
-                                  setCancelConfirmOpen(true);
-                                }
-                              : undefined
-                          }
-                          onRebook={
-                            (msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
-                              ? reservationsByOrder[msg.reservationInfo.orderId].acceptStatus
-                              : msg.reservationInfo.acceptStatus) === 'failed' ||
-                            (msg.reservationInfo.orderId && reservationsByOrder[msg.reservationInfo.orderId]
-                              ? reservationsByOrder[msg.reservationInfo.orderId].acceptStatus
-                              : msg.reservationInfo.acceptStatus) === 'canceled'
-                              ? () => rebookReservation(msg.id, msg.reservationInfo!)
-                              : undefined
-                          }
-                        />
-                      </div>
+                      (() => {
+                        const reservationInfo = msg.reservationInfo;
+                        const orderId = reservationInfo.orderId;
+                        const reservationData = orderId && reservationsByOrder[orderId]
+                          ? reservationsByOrder[orderId]
+                          : reservationInfo;
+                        const acceptStatus = reservationData.acceptStatus;
+                        return (
+                          <div className="ai-message-reservation-card">
+                            <ReservationInfoCard
+                              data={reservationData}
+                              now={now}
+                              onCancel={
+                                acceptStatus === 'pending' || acceptStatus === 'accepted'
+                                  ? () => {
+                                      setCancelTarget({ messageId: msg.id, reservation: reservationData });
+                                      setCancelConfirmOpen(true);
+                                    }
+                                  : undefined
+                              }
+                              onRebook={
+                                acceptStatus === 'failed' || acceptStatus === 'canceled'
+                                  ? () => rebookReservation(msg.id, reservationInfo)
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        );
+                      })()
                     )}
                     {msg.redeemReminder && (
-                      <div className="ai-message-reminder-card">
-                        <RedeemReminderCard
-                          reminder={msg.redeemReminder}
-                          orderId={msg.redeemReminder.orderId}
-                          productName={msg.redeemReminder.productName || msg.orderCard?.productName || ''}
-                          onCancel={() => {
-                            setReminderCancelTarget({ orderId: msg.redeemReminder.orderId, reminder: msg.redeemReminder });
-                            setReminderCancelConfirmOpen(true);
-                          }}
-                          onModify={() => modifyReminder(
-                            msg.redeemReminder.orderId,
-                            msg.redeemReminder.productName || msg.orderCard?.productName,
-                            msg.redeemReminder.validDate || msg.orderCard?.validDate
-                          )}
-                          onReset={() => resetReminder(
-                            msg.redeemReminder.orderId,
-                            msg.redeemReminder.productName || msg.orderCard?.productName,
-                            msg.redeemReminder.validDate || msg.orderCard?.validDate
-                          )}
-                        />
-                      </div>
+                      (() => {
+                        const reminder = msg.redeemReminder;
+                        const productName = reminder.productName || msg.orderCard?.productName || '';
+                        const validDate = reminder.validDate || msg.orderCard?.validDate;
+                        return (
+                          <div className="ai-message-reminder-card">
+                            <RedeemReminderCard
+                              reminder={reminder}
+                              orderId={reminder.orderId}
+                              productName={productName}
+                              onCancel={() => {
+                                setReminderCancelTarget({ orderId: reminder.orderId, reminder });
+                                setReminderCancelConfirmOpen(true);
+                              }}
+                              onModify={() => modifyReminder(
+                                reminder.orderId,
+                                productName,
+                                validDate
+                              )}
+                              onReset={() => resetReminder(
+                                reminder.orderId,
+                                productName,
+                                validDate
+                              )}
+                            />
+                          </div>
+                        );
+                      })()
                     )}
                     {msg.actions && msg.actions.length > 0 && (
                       <div className="ai-message-actions">
@@ -1170,7 +1170,7 @@ const AiAssistantOverlay: React.FC = () => {
             onConfirm={confirmReservation}
             storeName={reservationStoreName}
             businessHours={reservationBusinessHours}
-            initialReservation={editingReservation}
+            initialReservation={editingReservation ?? undefined}
           />
           <VoucherCodeSheet
             open={voucherSheetOpen}
