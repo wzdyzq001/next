@@ -1,0 +1,4221 @@
+/* ============================================================
+ * AI 助手全局宽度强制规则
+ * 说明：此规则为全局强制规则，确保 AI 助手界面所有容器元素
+ *       始终与订单中心/订单详情页的宽度保持一致，
+ *       最大宽度为 var(--mobile-page-width)。
+ * ============================================================ */
+
+.ai-overlay-header,
+.ai-overlay-body,
+.ai-overlay-footer,
+.ai-message-list,
+.ai-history-collapse,
+.ai-message,
+.ai-message-order-card,
+.ai-message-feature-card,
+.ai-message-reservation-card,
+.ai-message-reminder-card,
+.ai-order-selector-header,
+.ai-order-selector-tabs,
+.ai-order-selector-list,
+.reservation-drawer-header,
+.reservation-drawer-body,
+.reservation-drawer-footer,
+.feature-card,
+.feature-card-header,
+.feature-card-section,
+.feature-card-actions,
+.oc-order-card,
+.oc-card-base,
+.oc-card-info,
+.oc-card-title-row,
+.oc-card-title-main,
+.oc-card-tags,
+.oc-card-extension,
+.oc-progress-header,
+.oc-progress-steps,
+.oc-info-list,
+.oc-info-item,
+.oc-card-actions,
+.oc-card-suggestions,
+.oc-compact-card {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ai-overlay-panel,
+.ai-order-selector-panel,
+.redeem-reminder-sheet,
+.reservation-drawer,
+.voucher-sheet {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: var(--mobile-page-width) !important;
+  min-width: 0 !important;
+}
+
+.ai-overlay-mask,
+.ai-order-selector-mask,
+.redeem-reminder-sheet-mask,
+.reservation-drawer-overlay,
+.voucher-sheet-mask {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ai-overlay-panel {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) translateY(100%) !important;
+}
+
+.ai-order-selector-panel {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) translateY(100%) !important;
+}
+
+.ai-overlay-mask.open .ai-overlay-panel {
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+.ai-order-selector-mask.open .ai-order-selector-panel {
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+/* ============================================================
+ * AI 助手入口层样式
+ * ============================================================ */
+
+/* 列表页 AI 入口按钮 */
+.oc-list-ai-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.oc-list-ai-btn:active {
+  transform: scale(0.95);
+}
+
+.oc-list-ai-btn .ai-entry-red-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background: #ff4d4f;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  z-index: 2;
+  animation: ai-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ai-dot-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* 详情页悬浮 AI 入口按钮 */
+.ai-detail-entry-btn {
+  position: fixed;
+  left: 16px;
+  bottom: 80px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdff 50%, #d6f7ff 100%);
+  box-shadow: 0 4px 20px rgba(0, 176, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid rgba(79, 195, 247, 0.3);
+}
+
+.ai-detail-entry-btn:active {
+  transform: scale(0.95);
+}
+
+.ai-detail-entry-btn .ai-entry-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.ai-detail-entry-btn .ai-entry-red-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  background: #ff4d4f;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  z-index: 2;
+  animation: ai-dot-pulse 2s ease-in-out infinite;
+}
+
+.ai-detail-entry-btn .ai-entry-label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #4FC3F7;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* ============================================================
+ * AI 助手浮层样式
+ * ============================================================ */
+
+.ai-overlay-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+}
+
+.ai-overlay-mask.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ai-overlay-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%) translateY(100%);
+  width: 100%;
+  max-width: 100%;
+  height: 90%;
+  background: #f7f8fa;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.1);
+  will-change: height, transform;
+}
+
+.ai-assistant-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 9999;
+  animation: toastFadeIn 0.2s ease;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 80vw;
+  text-align: center;
+}
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 10px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.ai-overlay-grabber,
+.ai-overlay-header {
+  touch-action: none;
+}
+
+.ai-overlay-mask.open .ai-overlay-panel {
+  transform: translateX(-50%) translateY(0);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), height 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.3s ease;
+}
+
+.ai-overlay-panel.fullscreen {
+  height: 100%;
+  border-radius: 0;
+}
+
+.ai-overlay-panel.dragging {
+  transition: none;
+}
+
+.ai-overlay-grabber {
+  width: 40px;
+  height: 4px;
+  background: #d9dbe0;
+  border-radius: 2px;
+  margin: 8px auto 0;
+  flex-shrink: 0;
+}
+
+/* 头部区域 */
+.ai-overlay-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f1f5;
+  flex-shrink: 0;
+}
+
+.ai-overlay-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-overlay-avatar .ai-orb-icon {
+  position: relative;
+  z-index: 2;
+}
+
+.ai-avatar-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(79, 195, 247, 0.6);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0.8;
+  animation: ai-avatar-pulse 2s ease-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes ai-avatar-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.ai-avatar-rotate-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ai-avatar-rotate-ring::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: #4DD0E1;
+  border-right-color: rgba(77, 208, 225, 0.5);
+  animation: ai-avatar-spin 3s linear infinite;
+}
+
+.ai-avatar-rotate-ring::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-bottom-color: #80DEEA;
+  border-left-color: rgba(128, 222, 234, 0.4);
+  animation: ai-avatar-spin-reverse 4.5s linear infinite;
+}
+
+@keyframes ai-avatar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ai-avatar-spin-reverse {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.ai-avatar-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(77, 208, 225, 0.25) 0%, rgba(77, 208, 225, 0.1) 40%, transparent 70%);
+  animation: ai-avatar-breathe 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes ai-avatar-breathe {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+}
+
+.ai-avatar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #08223D, #0D4A75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(13, 74, 117, 0.2);
+}
+
+.ai-overlay-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-overlay-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-overlay-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2329;
+  line-height: 1.3;
+}
+
+.ai-overlay-title-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #4DD0E1;
+  background: linear-gradient(135deg, rgba(77, 208, 225, 0.12) 0%, rgba(0, 188, 212, 0.08) 100%);
+  border: 1px solid rgba(77, 208, 225, 0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+}
+
+.ai-overlay-subtitle {
+  font-size: 12px;
+  color: #86909c;
+  margin-top: 2px;
+}
+
+.ai-overlay-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-top: -11px;
+}
+
+.ai-overlay-action-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #4e5969;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.ai-overlay-action-btn:active {
+  background: transparent;
+}
+
+.ai-overlay-action-btn.close-btn:active {
+  background: transparent;
+  color: #ff4d4f;
+}
+
+.ai-overlay-action-btn.close-btn {
+  width: 44px;
+  height: 44px;
+}
+
+/* 消息区域 */
+.ai-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.ai-message-list {
+  padding: 0 16px;
+}
+
+.ai-history-collapse {
+  text-align: center;
+  padding: 8px 0;
+  font-size: 12px;
+  color: #8a8f99;
+  cursor: pointer;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  user-select: none;
+}
+
+.ai-history-collapse:hover {
+  color: #6b7280;
+  opacity: 0.8;
+}
+
+.ai-message {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.ai-message.user {
+  justify-content: flex-end;
+}
+
+.ai-message.user .ai-message-bubble {
+  order: 1;
+}
+
+.ai-message.user .ai-message-avatar {
+  order: 2;
+}
+
+.ai-message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ai-message-avatar.user {
+  background: linear-gradient(135deg, #165dff, #4080ff);
+  color: #fff;
+}
+
+.ai-message-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.ai-message.assistant .ai-message-bubble {
+  background: #ffffff;
+  border: 1px solid #eef0f3;
+  border-top-left-radius: 4px;
+}
+
+.ai-message.user .ai-message-bubble {
+  background: #fff8f8;
+  border: 0.5px solid #ffb3b3;
+  color: #1f2937;
+  border-top-right-radius: 4px;
+}
+
+.ai-message.user .ai-message-text {
+  color: #1f2937;
+}
+
+.ai-message-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #6b7280;
+  display: inline;
+}
+
+.ai-reservation-hint {
+  color: #86909c;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.ai-message-order-card {
+  width: 100%;
+}
+
+/* ============================================================
+ * 卡片消息气泡宽度 - 已固化为 90%
+ * 说明：此宽度参数为产品确认后的固化设置，
+ *       包含订单卡片、功能卡、预约卡、提醒卡等所有卡片消息。
+ * 注意：如需调整此宽度，必须先与产品负责人确认后方可修改。
+ *       不得随意修改此宽度参数。
+ * ============================================================ */
+.ai-message.assistant:has(.ai-message-order-card) .ai-message-bubble {
+  width: 90%;
+  max-width: 90%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.ai-message-order-card .oc-order-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.ai-message-order-card .oc-card-base {
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.ai-message-order-card .oc-card-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  font-size: 26px;
+}
+
+.ai-message-order-card .oc-card-info {
+  gap: 4px;
+}
+
+.ai-message-order-card .oc-card-title-row {
+  gap: 6px;
+}
+
+.ai-message-order-card .oc-card-name {
+  font-size: 13px;
+  margin-bottom: 3px;
+}
+
+.ai-message-order-card .oc-card-tags {
+  font-size: 11px;
+  margin-bottom: 3px;
+  row-gap: 3px;
+}
+
+.ai-message-order-card .oc-tag {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-card-status {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-card-store {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-store-name {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-store-distance {
+  margin-right: 4px;
+}
+
+.ai-message-order-card .oc-store-actions {
+  gap: 3px;
+  margin-left: 6px;
+}
+
+.ai-message-order-card .oc-store-icon-btn {
+  width: 22px;
+  height: 22px;
+}
+
+.ai-message-order-card .oc-store-icon-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ai-message-order-card .oc-price-symbol {
+  font-size: 10px;
+}
+
+.ai-message-order-card .oc-price-num {
+  font-size: 13px;
+}
+
+.ai-message-order-card .oc-card-extension {
+  margin: 0;
+  padding: 6px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-message-order-card .oc-extension-title {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.ai-message-order-card .oc-progress-header {
+  margin-bottom: 12px;
+}
+
+.ai-message-order-card .oc-progress-title {
+  font-size: 12px;
+  gap: 4px;
+}
+
+.ai-message-order-card .oc-progress-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ai-message-order-card .oc-progress-estimate {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.ai-message-order-card .oc-step-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.ai-message-order-card .oc-step-label {
+  font-size: 10px;
+}
+
+.ai-message-order-card .oc-step-time {
+  font-size: 9px;
+  margin-top: 1px;
+}
+
+.ai-message-order-card .oc-step-line {
+  top: 4px;
+  left: calc(50% + 6px);
+  width: calc(100% - 12px);
+  height: 2px;
+}
+
+.ai-message-order-card .oc-info-list {
+  gap: 6px;
+}
+
+.ai-message-order-card .oc-info-item {
+  font-size: 12px;
+}
+
+.ai-message-order-card .oc-card-actions {
+  padding: 6px 12px 10px;
+  gap: 8px;
+}
+
+.ai-message-order-card .oc-action-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 11px;
+  gap: 3px;
+}
+
+.ai-message-order-card .oc-btn-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.ai-message-order-card .oc-card-suggestions {
+  margin: 0;
+  padding: 10px 12px 12px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-message-order-card .oc-suggestions-row {
+  gap: 8px;
+}
+
+.ai-message-order-card .oc-suggestions-label {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-suggestions-list {
+  gap: 6px;
+  padding-bottom: 3px;
+}
+
+.ai-message-order-card .oc-suggestion-btn {
+  padding: 5px 10px 5px 24px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-suggestion-btn::before {
+  left: 8px;
+  font-size: 10px;
+}
+
+.ai-message-order-card .oc-pickup-code {
+  font-size: 18px;
+  letter-spacing: 1.5px;
+}
+
+.ai-message-order-card .oc-pickup-time {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-refund-status {
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.ai-message-order-card .oc-refund-status-text {
+  font-size: 12px;
+}
+
+.ai-message-order-card .oc-refund-status-amount {
+  font-size: 13px;
+}
+
+.ai-message-order-card .oc-hotel-icon-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.ai-message-order-card .oc-hotel-stay-name {
+  font-size: 12px;
+}
+
+.ai-message-order-card .oc-hotel-date-row {
+  font-size: 12px;
+  gap: 6px;
+}
+
+.ai-message-order-card .oc-hotel-stay-label,
+.ai-message-order-card .oc-hotel-date-label {
+  font-size: 11px;
+}
+
+.ai-message-order-card .oc-hotel-nights {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.ai-message-order-card .oc-hotel-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+/* 打字指示器 */
+.ai-typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+}
+
+.ai-typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #86909c;
+  animation: ai-typing-bounce 1.4s ease-in-out infinite;
+}
+
+.ai-typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ai-typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes ai-typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* 底部输入区 */
+.ai-overlay-footer {
+  background: #ffffff;
+  border-top: 1px solid #f0f1f5;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  flex-shrink: 0;
+}
+
+.ai-order-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #f2f3f5;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #4e5969;
+  cursor: pointer;
+}
+
+.ai-order-selector-icon {
+  display: flex;
+  color: #165dff;
+}
+
+.ai-order-selector-text {
+  flex: 1;
+}
+
+.ai-order-selector-arrow {
+  display: flex;
+  color: #86909c;
+}
+
+.ai-input-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-voice-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #f2f3f5;
+  color: #4e5969;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.ai-voice-btn:active {
+  background: #e5e6eb;
+}
+
+.ai-voice-btn.listening {
+  background: #ff4d4f;
+  color: #ffffff;
+  animation: ai-voice-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ai-voice-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(255, 77, 79, 0);
+  }
+}
+
+.ai-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #e5e6eb;
+  border-radius: 18px;
+  background: #f7f8fa;
+  font-size: 15px;
+  color: #1f2329;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.ai-input:focus {
+  border-color: #165dff;
+  background: #ffffff;
+}
+
+.ai-input::placeholder {
+  color: #a9aeb8;
+}
+
+.ai-voice-input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-hold-to-talk {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #e5e6eb;
+  border-radius: 18px;
+  background: #f7f8fa;
+  font-size: 15px;
+  color: #4e5969;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.ai-hold-to-talk:active {
+  background: #e5e6eb;
+}
+
+.ai-hold-to-talk.listening {
+  background: #e8f3ff;
+  border-color: #165dff;
+  color: #165dff;
+  font-weight: 500;
+}
+
+.ai-volume-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+}
+
+.ai-volume-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #165dff, #4080ff);
+  transition: height 0.08s ease-out, opacity 0.08s ease-out;
+}
+
+.ai-voice-error {
+  font-size: 12px;
+  color: #f53f3f;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ============================================================
+ * 加号按钮 & 已选订单
+ * ============================================================ */
+
+.ai-add-order-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ai-order-hint-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: linear-gradient(135deg, #f53f3f 0%, #ff7d7d 100%);
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(245, 63, 63, 0.3);
+  animation: ai-bubble-float 2.7s ease-in-out forwards;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.ai-order-hint-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #ff7d7d;
+}
+
+@keyframes ai-bubble-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  28% {
+    transform: translateY(-4px);
+  }
+  46% {
+    transform: translateY(0);
+  }
+  63% {
+    transform: translateY(-3px);
+  }
+  81% {
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.ai-order-hint-bubble.fading-out {
+  animation: ai-bubble-fade-out 0.3s ease forwards;
+}
+
+@keyframes ai-bubble-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.ai-add-order-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #f2f3f5;
+  color: #4e5969;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.ai-add-order-btn:active {
+  background: #e5e6eb;
+}
+
+.ai-footer-quick-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.ai-footer-quick-action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid #e5e6eb;
+  background: #ffffff;
+  color: #666666;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-footer-quick-action-btn:hover {
+  border-color: #c9cdd4;
+  color: #4e5969;
+  background: #f7f8fa;
+}
+
+.ai-footer-quick-action-btn:active {
+  background: #f0f1f5;
+}
+
+.ai-footer-quick-action-btn-disabled {
+  background: #f7f8fa;
+  border-color: #e5e6eb;
+  color: #c9cdd4;
+  cursor: not-allowed;
+}
+
+.ai-footer-quick-action-btn-disabled:hover {
+  background: #f7f8fa;
+  border-color: #e5e6eb;
+  color: #c9cdd4;
+}
+
+.ai-footer-quick-action-btn-disabled:active {
+  background: #f7f8fa;
+}
+
+.ai-selected-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f2f3f5;
+  border-radius: 12px;
+  gap: 10px;
+}
+
+.ai-selected-order-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-selected-order-merchant {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-selected-order-product {
+  font-size: 12px;
+  color: #86909c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-selected-order-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #86909c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.ai-selected-order-remove:active {
+  background: #e5e6eb;
+  color: #ff4d4f;
+}
+
+/* ============================================================
+ * 订单选择浮层
+ * ============================================================ */
+
+.ai-order-selector-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+}
+
+.ai-order-selector-mask.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ai-order-selector-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%) translateY(100%);
+  width: 100%;
+  max-width: var(--mobile-page-width);
+  height: 85%;
+  background: #f7f8fa;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
+.ai-order-selector-mask.open .ai-order-selector-panel {
+  transform: translateX(-50%) translateY(0);
+}
+
+.ai-order-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 8px;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.ai-order-selector-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.ai-order-selector-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #4e5969;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.ai-order-selector-close:active {
+  background: #f2f3f5;
+  color: #ff4d4f;
+}
+
+.ai-order-selector-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f1f5;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ai-order-selector-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ai-order-selector-tab {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #4e5969;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ai-order-selector-tab:active {
+  opacity: 0.7;
+}
+
+.ai-order-selector-tab.active {
+  color: #1f2329;
+  font-weight: 600;
+}
+
+.ai-order-selector-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: #FF4D4F;
+  border-radius: 2px;
+}
+
+.ai-order-selector-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ai-order-selector-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #86909c;
+  font-size: 14px;
+}
+
+.oc-card-status-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.oc-card-status-group .oc-card-status-v2 {
+  margin-left: 0;
+}
+
+.oc-card-sub-status-line {
+  font-size: 11px;
+  color: #86909c;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+  display: block;
+  text-align: right;
+  margin-top: 6px;
+}
+
+/* ============================================================
+ * 使用提醒相关样式（从 V1.1 版本迁移）
+ * ============================================================ */
+
+/* ============ 使用提醒卡片 ============ */
+.redeem-reminder-card {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.redeem-reminder-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.redeem-reminder-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B6B, #FF8E72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.redeem-reminder-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.redeem-reminder-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-base);
+  line-height: 1.4;
+}
+
+.redeem-reminder-product {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-mute);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.redeem-reminder-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.redeem-reminder-btn {
+  flex: 1;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.redeem-reminder-btn.modify {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E72);
+  color: #fff;
+}
+
+.redeem-reminder-btn.modify:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.redeem-reminder-btn.cancel {
+  background: #fff;
+  color: var(--ink-base);
+  border: 1px solid var(--line);
+}
+
+.redeem-reminder-btn.cancel:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.redeem-reminder-card.is-canceled {
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+  border-color: var(--line);
+  opacity: 0.85;
+}
+
+.redeem-reminder-card.is-canceled .redeem-reminder-icon {
+  background: linear-gradient(135deg, #bbb, #ddd);
+}
+
+.redeem-reminder-card.is-canceled .redeem-reminder-title {
+  color: var(--ink-mute);
+}
+
+.redeem-reminder-card.is-canceled .redeem-reminder-btn.modify {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E72);
+}
+
+/* ============ 使用提醒底部弹层 ============ */
+.redeem-reminder-sheet-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.25s ease;
+}
+
+.redeem-reminder-sheet {
+  width: 100%;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 14px 16px 20px;
+  animation: voucherSheetUp 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.redeem-reminder-sheet-grabber {
+  width: 36px;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin: 0 auto 10px;
+}
+
+.redeem-reminder-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.redeem-reminder-sheet-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-base);
+}
+
+.redeem-reminder-sheet-close {
+  appearance: none;
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: var(--ink-mute);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.redeem-reminder-sheet-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-base);
+  margin: 8px 0 6px;
+}
+
+.redeem-reminder-quick-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.redeem-reminder-quick-option {
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+}
+
+.redeem-reminder-quick-option.active {
+  border-color: var(--accent);
+  background: #fff5f5;
+}
+
+.redeem-reminder-quick-option .day {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-base);
+  line-height: 1.2;
+}
+
+.redeem-reminder-quick-option.active .day {
+  color: var(--accent);
+}
+
+.redeem-reminder-quick-option .date {
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.redeem-reminder-date-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafafa;
+  margin-top: 10px;
+}
+
+.redeem-reminder-date-picker input[type="date"] {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-family: var(--font-body);
+  color: var(--ink-base);
+  padding: 0;
+}
+
+.redeem-reminder-date-picker input[type="time"] {
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-family: var(--font-body);
+  color: var(--ink-base);
+  padding: 0;
+}
+
+.redeem-reminder-confirm-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #FF6B6B, #FF8E72);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  margin-top: 24px;
+  transition: all 0.2s ease;
+}
+
+.redeem-reminder-confirm-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.redeem-reminder-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.reminder-max-toast {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.reminder-expiry-info {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.reminder-expiry-info.is-expired {
+  background: #fff5f5;
+}
+
+.reminder-expiry-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reminder-expiry-row-label {
+  color: var(--ink-mute);
+  flex-shrink: 0;
+}
+
+.reminder-expiry-row-value {
+  color: var(--ink-base);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.reminder-expiry-row-status {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.reminder-expiry-row-status.text-expired {
+  color: #ff4d4f;
+}
+
+.reminder-expiry-row-status.text-active {
+  color: #52c41a;
+}
+
+.reminder-expired-card {
+  text-align: center;
+  padding: 32px 20px;
+}
+
+.reminder-expired-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.reminder-expired-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-base);
+  margin-bottom: 6px;
+}
+
+.reminder-expired-desc {
+  font-size: 13px;
+  color: var(--ink-mute);
+}
+
+.reminder-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.reminder-day-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 20px;
+  color: var(--ink-base);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.reminder-day-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.reminder-day-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.reminder-days-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 15px;
+  color: var(--ink-base);
+}
+
+.reminder-days-input-field {
+  width: 48px;
+  text-align: center;
+  border: none;
+  background: none;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-base);
+  font-family: var(--font-body);
+  outline: none;
+}
+
+.reminder-days-input-field:focus {
+  outline: none;
+}
+
+.reminder-date-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.reminder-date-display {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.reminder-date-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-base);
+  line-height: 1.3;
+}
+
+.reminder-date-sub {
+  font-size: 11px;
+  color: var(--ink-mute);
+  line-height: 1.2;
+}
+
+.reminder-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.reminder-time-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.reminder-time-btn {
+  width: 36px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.reminder-time-display {
+  min-width: 48px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.reminder-time-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-base);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.reminder-time-separator {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink-base);
+  padding-bottom: 8px;
+}
+
+.reminder-time-note {
+  font-size: 12px;
+  color: var(--ink-mute);
+  text-align: center;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: #fff7e6;
+  border-radius: 6px;
+  color: #d46b08;
+}
+
+/* ============ 订单详情页提醒气泡 ============ */
+.oc-detail-ai-btn-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.redeem-reminder-bubble {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #FF6B6B, #FF8E72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.35);
+  z-index: 9999;
+  animation: reminderBounce 2s ease-in-out infinite;
+}
+
+.redeem-reminder-bubble.clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+@keyframes reminderBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes voucherSheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+ * 预约功能相关样式（从 V1.1 版本迁移）
+ * ============================================================ */
+
+.reservation-drawer-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.reservation-success-pill {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #5b1425 0%, #43101c 100%);
+  color: #fff5f8;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.success-badge {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ff922c;
+  color: #fff;
+  font-size: 12px;
+}
+
+.reservation-drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reservation-drawer {
+  position: relative;
+  width: 100%;
+  max-width: var(--mobile-page-width);
+  min-width: 0;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fff0f7 0%, #fff7fb 52%, #ffffff 100%);
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  height: calc(100vh - 68px);
+  max-height: calc(100vh - 68px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.reservation-drawer.open {
+  transform: translateY(0);
+}
+
+.reservation-drawer-header {
+  padding: 24px 18px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  gap: 12px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.title-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 6px;
+  column-gap: 10px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.title-group h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #161824;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.title-group .subtitle {
+  font-size: 13px;
+  color: #8b8892;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.close-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #161824;
+  cursor: pointer;
+}
+
+.reservation-drawer-body {
+  padding: 0 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.reserve-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reservation-main-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 18px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.reserve-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reserve-label {
+  font-size: 18px;
+  font-weight: 800;
+  color: #171923;
+}
+
+.reserve-sub-label {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-mute);
+}
+
+.reserve-hours-pill {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff0f6;
+  color: #ff4da0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.reserve-label.inline {
+  flex: 1;
+}
+
+.store-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  gap: 10px;
+  min-width: 0;
+}
+
+.store-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.store-img-placeholder {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 102, 149, 0.18)),
+    url("https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=portrait%20of%20a%20young%20woman%20with%20pink%20hair%2C%20beauty%20salon%20avatar%2C%20soft%20studio%20lighting%2C%20realistic%2C%20square%20crop&image_size=square");
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.store-text {
+  min-width: 0;
+}
+
+.store-text .name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #171923;
+  margin-bottom: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-text .desc {
+  font-size: 14px;
+  color: #71717a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switch-btn {
+  appearance: none;
+  background: #f6f6f7;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.date-tabs {
+  display: flex;
+  gap: 26px;
+  border-bottom: none;
+  padding-bottom: 0;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.date-tab {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  color: #8d8d94;
+  position: relative;
+  cursor: pointer;
+  flex: 0 0 auto;
+  min-width: max-content;
+  padding-bottom: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.date-tab.active {
+  color: #171923;
+}
+
+.date-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 3px;
+  background: #ff2a5f;
+  border-radius: 2px;
+}
+
+.date-tab .day,
+.date-tab .date {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px 8px;
+  margin-top: 0;
+  min-width: 0;
+}
+
+.time-slot {
+  appearance: none;
+  background: #f8f8f9;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 0 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.2s;
+}
+
+.time-slot .time {
+  font-size: 15px;
+  font-weight: 800;
+  color: #171923;
+}
+
+.time-slot .status {
+  font-size: 12px;
+  color: #9ca0a8;
+}
+
+.time-slot.active {
+  background: #fff1f5;
+  border-color: #ff2a5f;
+}
+
+.time-slot.active .time, .time-slot.active .status {
+  color: #ff2a5f;
+}
+
+.time-slot.busy {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.time-slot.busy .time {
+  color: var(--ink-mute);
+}
+
+.time-slot.past {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.time-slot.past .time,
+.time-slot.past .status {
+  color: var(--ink-mute);
+  text-decoration: line-through;
+}
+
+.reserve-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 14px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: transparent;
+  padding: 0;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.stepper button {
+  appearance: none;
+  border: none;
+  background: #f4f4f5;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #171923;
+  box-shadow: none;
+}
+
+.stepper span {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 12px;
+  text-align: center;
+}
+
+.phone-number {
+  font-size: 16px;
+  font-weight: 500;
+  color: #252733;
+  flex-shrink: 0;
+}
+
+@media (max-width: 374px) {
+  .order-panel-head,
+  .reservation-drawer-header {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .order-panel-tabs,
+  .reservation-drawer-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .time-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .time-slot {
+    padding: 8px 0;
+  }
+}
+
+.reserve-tips {
+  font-size: 13px;
+  color: #a0a0a8;
+  line-height: 1.6;
+  background: transparent;
+  padding: 4px 8px 0;
+  border-radius: 0;
+  margin-bottom: 2px;
+}
+
+.reservation-drawer-footer {
+  padding: 12px 14px 28px;
+  background: #fff;
+  border-top: none;
+  flex-shrink: 0;
+}
+
+.submit-btn {
+  appearance: none;
+  border: none;
+  background: #ff2a5f;
+  color: #fff;
+  width: 100%;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 800;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.submit-btn:not(:disabled):hover {
+  opacity: 1;
+}
+
+.submit-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* ============== Reservation Result Card ============== */
+.reservation-info-card {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: none;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.reservation-info-card.canceled {
+  background: #fff;
+  border: none;
+}
+
+.reservation-info-head,
+.oc-reservation-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.reservation-info-kicker {
+  display: none;
+}
+
+.reservation-info-title,
+.oc-reservation-title {
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #1a1a1f;
+}
+
+.reservation-countdown {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff6b6b;
+}
+
+.reservation-status-badge,
+.oc-reservation-status {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 107, 107, 0.08);
+  color: #ff6b6b;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reservation-status-badge.canceled {
+  background: #f5f5f7;
+  color: #8a8a93;
+}
+
+.reservation-status-badge.failed {
+  background: rgba(250, 173, 20, 0.1);
+  color: #faad14;
+}
+
+.reservation-status-badge.accepted {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.reservation-info-store,
+.oc-reservation-store {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #fafafc;
+  margin-bottom: 8px;
+  min-width: 0;
+}
+
+.reservation-store-avatar,
+.oc-reservation-logo {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffb5c7, #ff6b6b);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reservation-store-copy,
+.oc-reservation-store-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.reservation-store-name,
+.oc-reservation-store-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: #1a1a1f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reservation-store-desc,
+.reservation-store-hours,
+.oc-reservation-store-addr,
+.oc-reservation-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #8a8a93;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reservation-info-grid,
+.oc-reservation-info-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 2px;
+}
+
+.reservation-info-item,
+.oc-reservation-info-grid > div {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+}
+
+.reservation-info-item:not(:last-child)::after,
+.oc-reservation-info-grid > div:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 20px;
+  background: #e8e8ed;
+}
+
+.reservation-info-item span,
+.oc-reservation-info-grid span {
+  color: #a0a0a8;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.reservation-info-item strong,
+.oc-reservation-info-grid strong {
+  color: #1a1a1f;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reservation-info-note {
+  margin-top: 8px;
+  color: #a0a0a8;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.reservation-info-cancel {
+  width: 100%;
+  margin-top: 8px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #ececef;
+  background: #fff;
+  color: #5a5a63;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.reservation-info-cancel:hover {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.reservation-info-cancel.rebook {
+  border: 0;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2);
+}
+
+.reservation-info-cancel.rebook:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(255, 107, 107, 0.3);
+}
+
+.reservation-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  z-index: 260;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+  contain: paint;
+}
+
+.reservation-confirm-dialog {
+  width: min(calc(100% - 24px), 318px);
+  max-width: 100%;
+  max-height: calc(100% - 48px);
+  padding: 20px 18px 16px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+  overflow: auto;
+}
+
+.reservation-confirm-title {
+  color: #171923;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 24px;
+  text-align: center;
+}
+
+.reservation-confirm-desc {
+  margin-top: 8px;
+  color: #77777f;
+  font-size: 13px;
+  line-height: 19px;
+  text-align: center;
+}
+
+.reservation-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.reservation-confirm-actions button {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.reservation-confirm-secondary {
+  border: 1px solid #eeeeef;
+  background: #fff;
+  color: #55555d;
+}
+
+.reservation-confirm-primary {
+  border: 0;
+  background: #ff2a5f;
+  color: #fff;
+}
+
+.oc-reservation-card-v3 {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 12px;
+  padding: 0;
+  border-radius: 10px;
+  background: #fbfbfc;
+  border: 1px solid #f0f0f2;
+  overflow: hidden;
+}
+
+.oc-reservation-card-v3.failed {
+  background: #fffaf5;
+  border-color: #ffe2c2;
+}
+
+.oc-reservation-card-v3 .oc-reservation-card-head {
+  display: block;
+  margin: 0;
+  padding: 10px 10px 8px;
+}
+
+.oc-reservation-title-wrap {
+  min-width: 0;
+}
+
+.oc-reservation-card-v3 .oc-reservation-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #222226;
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 800;
+}
+
+.oc-reservation-title span {
+  color: #ff4d4f;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.oc-reservation-card-v3 .oc-reservation-sub {
+  margin-top: 2px;
+  color: #8f8f95;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: normal;
+}
+
+.oc-reservation-info-box {
+  margin: 0 10px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: #f3f4f6;
+}
+
+.oc-reservation-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.oc-reservation-row + .oc-reservation-row {
+  border-top: 1px solid #e9e9ec;
+}
+
+.oc-reservation-row-icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: #55565c;
+  margin-top: 1px;
+}
+
+.oc-reservation-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.oc-reservation-card-v3 .oc-reservation-store-name,
+.oc-reservation-time {
+  color: #222226;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-reservation-card-v3 .oc-reservation-store-addr {
+  margin-top: 1px;
+  color: #8f8f95;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-reservation-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 8px;
+  border-top: 1px solid #eeeeef;
+}
+
+.oc-reservation-action-row button {
+  height: 36px;
+  border: 0;
+  border-right: 1px solid #eeeeef;
+  border-radius: 0;
+  background: #fff;
+  color: #333338;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.oc-reservation-action-row button:last-child {
+  border-right: 0;
+  color: #6a6a70;
+}
+
+.oc-reservation-action-row button.rebook {
+  background: #ff7a98;
+  color: #fff;
+}
+
+/* 预约功能响应式样式 */
+@media (max-width: 430px) {
+  .reservation-drawer-overlay {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .reservation-drawer {
+    width: 100%;
+    max-width: 100%;
+    height: 75vh;
+    max-height: 75vh;
+  }
+}
+
+/* ============================================================
+ * 券码弹层
+ * ============================================================ */
+
+.voucher-sheet-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(26, 20, 16, 0.42);
+  animation: voucherFadeIn 0.18s ease both;
+}
+
+@keyframes voucherFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.voucher-sheet {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 24px 24px 0 0;
+  background: #fff;
+  padding: 10px 20px calc(22px + env(safe-area-inset-bottom));
+  box-shadow: 0 -18px 44px -22px rgba(26, 20, 16, 0.45);
+  animation: voucherSheetUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes voucherSheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.voucher-sheet-grabber {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: rgba(26, 20, 16, 0.16);
+}
+
+.voucher-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.voucher-sheet-head span,
+.voucher-sheet-code-label {
+  display: block;
+  color: #8a8698;
+  font-family: 'SF Mono', Monaco, ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.voucher-sheet-head strong {
+  display: block;
+  margin-top: 4px;
+  color: #2d2b3a;
+  font-size: 18px;
+}
+
+.voucher-sheet-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(45, 43, 58, 0.1);
+  border-radius: 50%;
+  background: #fff;
+  color: #4a4758;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.voucher-sheet-product {
+  margin-top: 8px;
+  color: #4a4758;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.voucher-sheet-qr {
+  width: 180px;
+  height: 180px;
+  margin: 18px auto 14px;
+  padding: 12px;
+  border: 1px solid rgba(45, 43, 58, 0.25);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 14px 28px -22px rgba(26, 20, 16, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voucher-sheet-code-label {
+  text-align: center;
+}
+
+.voucher-sheet-code {
+  margin: 8px auto 0;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px dashed rgba(201, 133, 47, 0.75);
+  border-radius: 14px;
+  background: #f0eef5;
+  color: #2b1d12;
+  font-family: 'SF Mono', Monaco, ui-monospace, monospace;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+  cursor: pointer;
+  user-select: all;
+}
+
+.voucher-sheet p {
+  margin: 12px 0 0;
+  text-align: center;
+  color: #8a8698;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+ * 功能卡片样式
+ * ============================================================ */
+
+.ai-message-feature-card {
+  width: 100%;
+  padding-top: 8px;
+}
+
+.ai-message-reservation-card {
+  width: 100%;
+  padding-top: 4px;
+}
+
+.ai-message.assistant:has(.ai-message-reservation-card) .ai-message-text {
+  color: #86909c;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.ai-message-reminder-card {
+  width: 100%;
+  padding-top: 8px;
+}
+
+.ai-message.assistant:has(.ai-message-feature-card) .ai-message-bubble,
+.ai-message.assistant:has(.ai-message-reservation-card) .ai-message-bubble,
+.ai-message.assistant:has(.ai-message-reminder-card) .ai-message-bubble {
+  width: 90%;
+  max-width: 90%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.feature-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #f0f1f5;
+  overflow: hidden;
+}
+
+.feature-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #f5f6f8;
+}
+
+.feature-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.feature-card-icon.urgent {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+.feature-card-icon.guide {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+}
+
+.feature-card-icon.voucher {
+  background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);
+}
+
+.feature-card-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.feature-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2329;
+  line-height: 1.3;
+}
+
+.feature-card-subtitle {
+  font-size: 13px;
+  color: #86909c;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-card-section {
+  padding: 14px 16px;
+}
+
+.feature-card-section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2329;
+  margin-bottom: 10px;
+}
+
+.feature-card-section-hint {
+  font-size: 12px;
+  color: #86909c;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.feature-card-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.feature-card-quick-option {
+  padding: 10px 6px;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.feature-card-quick-option.active {
+  border-color: #165dff;
+  background: #e8f3ff;
+}
+
+.quick-option-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.feature-card-quick-option.active .quick-option-label {
+  color: #165dff;
+}
+
+.quick-option-desc {
+  font-size: 11px;
+  color: #86909c;
+  margin-top: 2px;
+}
+
+.feature-card-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #f7f8fa;
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+
+.feature-card-stepper.small {
+  background: transparent;
+  padding: 0;
+}
+
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #ffffff;
+  color: #1f2329;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease;
+}
+
+.stepper-btn:active {
+  transform: scale(0.95);
+  background: #f2f3f5;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepper-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2329;
+  min-width: 50px;
+  text-align: center;
+}
+
+.feature-card-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  border-top: 1px solid #f5f6f8;
+}
+
+.feature-card-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.feature-card-btn.secondary {
+  background: #f7f8fa;
+  color: #4e5969;
+  border: 1px solid #e5e6eb;
+}
+
+.feature-card-btn.secondary:active {
+  background: #eef0f3;
+}
+
+.feature-card-btn.primary {
+  background: linear-gradient(135deg, #165dff 0%, #4080ff 100%);
+  color: #ffffff;
+}
+
+.feature-card-btn.primary:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+.feature-card-btn.urgent {
+  background: linear-gradient(135deg, #ff7d00 0%, #ff9500 100%);
+  color: #ffffff;
+}
+
+.feature-card-btn.urgent:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+.feature-card-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 预约卡片样式 */
+.feature-card-date-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.feature-card-date-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.feature-card-date-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.feature-card-date-tab.active {
+  color: #165dff;
+}
+
+.feature-card-date-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: #165dff;
+  border-radius: 2px;
+}
+
+.date-tab-day {
+  font-size: 14px;
+  font-weight: 600;
+  color: #86909c;
+}
+
+.feature-card-date-tab.active .date-tab-day {
+  color: #1f2329;
+}
+
+.date-tab-date {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.feature-card-time-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.feature-card-time-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  background: #f7f8fa;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2329;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.feature-card-time-slot.active {
+  background: #e8f3ff;
+  border-color: #165dff;
+  color: #165dff;
+}
+
+.feature-card-time-slot.busy {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.time-slot-status {
+  font-size: 11px;
+  font-weight: 400;
+  color: #86909c;
+}
+
+.feature-card-time-slot.active .time-slot-status {
+  color: #165dff;
+}
+
+.feature-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feature-card-row-label {
+  font-size: 14px;
+  color: #1f2329;
+  font-weight: 500;
+}
+
+.feature-card-input {
+  flex: 1;
+  max-width: 140px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  background: #f7f8fa;
+  font-size: 14px;
+  color: #1f2329;
+  outline: none;
+  font-family: inherit;
+  text-align: right;
+  transition: border-color 0.2s ease;
+}
+
+.feature-card-input:focus {
+  border-color: #165dff;
+  background: #ffffff;
+}
+
+/* 加急卡片样式 */
+.urgent-content {
+  padding: 16px;
+}
+
+.urgent-reason-box {
+  background: linear-gradient(135deg, #fff7e6 0%, #fff1cc 100%);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.urgent-reason-label {
+  font-size: 12px;
+  color: #ad6800;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.urgent-reason-text {
+  font-size: 14px;
+  color: #874d00;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.urgent-target-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.urgent-target-label {
+  font-size: 14px;
+  color: #4e5969;
+}
+
+.urgent-target-badge {
+  padding: 4px 12px;
+  background: #e8f3ff;
+  color: #165dff;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.urgent-notice {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: #f7f8fa;
+  border-radius: 10px;
+}
+
+.urgent-notice-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.urgent-notice-text {
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.5;
+}
+
+/* 再来一单卡片样式 */
+.reorder-product {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  align-items: center;
+}
+
+.reorder-product-thumbnail {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f5f6f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reorder-product-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reorder-thumb-emoji {
+  font-size: 32px;
+  line-height: 1;
+  user-select: none;
+}
+
+.reorder-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.reorder-product-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2329;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.reorder-product-price {
+  margin-top: 6px;
+  color: #f53f3f;
+}
+
+.price-symbol {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.price-value {
+  font-size: 20px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.reorder-divider {
+  height: 1px;
+  background: #f5f6f8;
+  margin: 0 16px;
+}
+
+.reorder-tips {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  align-items: flex-start;
+}
+
+.reorder-tips-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.reorder-tips-text {
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.5;
+}
+
+/* 退款申请卡片样式 */
+.refund-warm-tip {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%);
+  border-bottom: 1px solid #ffe8e8;
+}
+
+.warm-tip-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.warm-tip-content {
+  flex: 1;
+}
+
+.warm-tip-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #c93131;
+  margin-bottom: 4px;
+}
+
+.warm-tip-text {
+  font-size: 12px;
+  color: #a04040;
+  line-height: 1.5;
+}
+
+.refund-amount {
+  font-size: 13px;
+  color: #86909c;
+  margin-top: 4px;
+}
+
+.amount-value {
+  color: #f53f3f;
+  font-size: 16px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.refund-reason-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.refund-reason-tag {
+  padding: 8px 14px;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
+  border-radius: 999px;
+  font-size: 13px;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.refund-reason-tag.active {
+  background: #e8f3ff;
+  border-color: #165dff;
+  color: #165dff;
+}
+
+.refund-remark-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 12px;
+  background: #f7f8fa;
+  font-size: 14px;
+  color: #1f2329;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.refund-remark-textarea:focus {
+  border-color: #165dff;
+  background: #ffffff;
+}
+
+.remark-char-count {
+  text-align: right;
+  font-size: 12px;
+  color: #86909c;
+  margin-top: 6px;
+}
+
+/* 攻略卡片样式 */
+.guide-content-list {
+  padding: 8px 16px 16px;
+}
+
+.guide-content-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f6f8;
+}
+
+.guide-content-item:last-child {
+  border-bottom: none;
+}
+
+.guide-item-number {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.guide-item-text {
+  flex: 1;
+  font-size: 14px;
+  color: #4e5969;
+  line-height: 1.6;
+}
+
+.guide-footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f7f8fa;
+  align-items: flex-start;
+}
+
+.guide-footer-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.guide-footer-text {
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.5;
+}
+
+/* 券码卡片样式 */
+.voucher-qr-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px 16px 12px;
+}
+
+.voucher-qr {
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #f0f1f5;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.voucher-code-section {
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.voucher-code-label {
+  font-size: 12px;
+  color: #86909c;
+  margin-bottom: 8px;
+}
+
+.voucher-code-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #fff7e6 0%, #fff1cc 100%);
+  border: 1px dashed #ffa940;
+  border-radius: 12px;
+  font-family: 'SF Mono', Monaco, ui-monospace, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #874d00;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: all;
+}
+
+.voucher-copy-btn {
+  font-size: 12px;
+  font-weight: 500;
+  color: #d46b08;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.voucher-info-row {
+  display: flex;
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+.voucher-info-item {
+  flex: 1;
+  text-align: center;
+}
+
+.voucher-info-label {
+  font-size: 12px;
+  color: #86909c;
+  margin-bottom: 4px;
+}
+
+.voucher-info-value {
+  font-size: 13px;
+  color: #1f2329;
+  font-weight: 500;
+}
+
+.voucher-notes {
+  padding: 12px 16px 16px;
+  border-top: 1px solid #f5f6f8;
+}
+
+.voucher-notes-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+  margin-bottom: 8px;
+}
+
+.voucher-notes-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #86909c;
+  line-height: 1.8;
+}
+
+.voucher-notes-list li {
+  margin-bottom: 2px;
+}
+
+/* ============================================================
+ * 确认弹窗样式
+ * ============================================================ */
+
+.confirm-dialog-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(26, 20, 16, 0.5);
+  animation: confirmFadeIn 0.2s ease both;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+  animation: dialogZoomIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes dialogZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.confirm-dialog-content {
+  padding: 24px 20px 20px;
+  text-align: center;
+}
+
+.confirm-dialog-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2329;
+  line-height: 1.4;
+}
+
+.confirm-dialog-message {
+  margin: 0;
+  font-size: 14px;
+  color: #606770;
+  line-height: 1.6;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  border-top: 1px solid #f0f1f5;
+}
+
+.confirm-dialog-btn {
+  flex: 1;
+  height: 52px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.confirm-dialog-btn:active {
+  background: #f5f6f8;
+}
+
+.confirm-dialog-btn.cancel {
+  color: #606770;
+  border-right: 1px solid #f0f1f5;
+}
+
+.confirm-dialog-btn.confirm {
+  color: #ff4da0;
+}
+
+.confirm-dialog-btn.confirm.danger {
+  color: #f53f3f;
+}
+
+.ai-message-quick-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.ai-quick-action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 2px;
+  border-radius: 10px;
+  border: 1px solid #e5e6eb;
+  background: linear-gradient(135deg, #f7f8fa 0%, #ffffff 100%);
+  color: #1f2329;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-quick-action-btn:hover {
+  background: linear-gradient(135deg, #e8f3ff 0%, #f0f7ff 100%);
+  border-color: #165dff;
+  color: #165dff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.15);
+}
+
+.ai-quick-action-btn:active {
+  transform: translateY(0);
+  background: linear-gradient(135deg, #d4e4ff 0%, #e0edff 100%);
+  box-shadow: 0 1px 4px rgba(22, 93, 255, 0.2);
+}
+
+.ai-message-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  margin-bottom: 2px;
+  justify-content: flex-end;
+  max-width: 100%;
+  align-items: center;
+}
+
+.ai-quick-reply-btn {
+  padding: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid #e0e2e8;
+  background: #ffffff;
+  color: #666666;
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  flex-grow: 0;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.ai-quick-reply-btn:hover {
+  background: #f5f6f8;
+  border-color: #d0d3da;
+}
+
+.ai-quick-reply-btn:active {
+  background: #e8eaef;
+  transform: scale(0.97);
+}
+
+.ai-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+.ai-action-btn {
+  padding: 5px 12px;
+  border-radius: 14px;
+  border: 1px solid #e0e2e8;
+  background: #ffffff;
+  color: #666666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 1;
+  flex-grow: 0;
+}
+
+.ai-action-btn:hover {
+  background: #f5f6f8;
+  border-color: #d0d3da;
+}
+
+.ai-action-btn:active {
+  background: #e8eaef;
+  transform: scale(0.97);
+}
+
+.ai-guide-primary-btn {
+  padding: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid #e0e2e8;
+  background: #ffffff;
+  color: #666666;
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 1;
+  flex-grow: 0;
+}
+
+.ai-guide-primary-btn:hover {
+  background: #f5f6f8;
+  border-color: #d0d3da;
+}
+
+.ai-guide-primary-btn:active {
+  background: #e8eaef;
+  transform: scale(0.97);
+}
+
+.ai-message-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.ai-order-list-view-all {
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  color: #3b82f6;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  border-top: 1px solid #f0f1f5;
+  margin-top: 4px;
+  transition: color 0.15s ease;
+}
+
+.ai-order-list-view-all:hover {
+  color: #2563eb;
+}
+
+.ai-order-list-view-all:active {
+  color: #1d4ed8;
+}
+
+.store-list-sheet-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.store-list-modal {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  max-height: 70%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.store-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid #f2f3f5;
+  flex-shrink: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.store-list-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.store-list-header .back-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #4e5969;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.store-list-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.store-list-item {
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.store-list-item:hover {
+  background: #f7f8fa;
+}
+
+.store-list-item.active {
+  background: #fff0f7;
+}
+
+.store-list-item .name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-list-item .desc {
+  font-size: 12px;
+  color: #86909c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-list-item .check-mark {
+  flex-shrink: 0;
+  color: #ff4da0;
+}
+
+.store-list-item > div:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}

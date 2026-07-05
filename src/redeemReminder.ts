@@ -19,6 +19,14 @@ function notifyListeners() {
 
 const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
+function calcNaturalDayDiff(targetTime: number, now: number = Date.now()): number {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(targetTime);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 function parseValidDate(validDate?: string): { start: Date | null; end: Date | null } {
   if (!validDate) return { start: null, end: null };
   const parts = validDate.split(/至|~/).map(s => s.trim());
@@ -38,9 +46,9 @@ function getValidityEndDate(validDate?: string): Date | null {
 function getDaysUntilExpiry(validDate?: string, now: number = Date.now()): number {
   const end = getValidityEndDate(validDate);
   if (!end) return 0;
-  const diffMs = end.getTime() - now;
-  if (diffMs <= 0) return 0;
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diff = calcNaturalDayDiff(end.getTime(), now);
+  if (diff <= 0) return 0;
+  return diff;
 }
 
 function formatExpiryDate(validDate?: string): string {
@@ -67,15 +75,10 @@ function formatExpiryDateTime(validDate?: string): string {
 function formatExpiryStatusText(validDate?: string, now: number = Date.now()): string {
   const end = getValidityEndDate(validDate);
   if (!end) return '';
-  const diffMs = end.getTime() - now;
-  if (diffMs <= 0) return '已过期';
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays <= 1) {
-    const endOfToday = new Date(now);
-    endOfToday.setHours(23, 59, 59, 999);
-    if (end.getTime() <= endOfToday.getTime()) return '今天过期';
-    return '1天后过期';
-  }
+  const diffDays = calcNaturalDayDiff(end.getTime(), now);
+  if (diffDays < 0) return '已过期';
+  if (diffDays === 0) return '今天过期';
+  if (diffDays === 1) return '1天后过期';
   return `${diffDays}天后过期`;
 }
 
@@ -189,8 +192,7 @@ function getQuickOptions(now: Date = new Date()): Array<{ label: string; date: D
       date.setDate(now.getDate() + dayDiff);
       date.setHours(10, 0, 0, 0);
 
-      const diffMs = date.getTime() - now.getTime();
-      const daysLater = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const daysLater = calcNaturalDayDiff(date.getTime(), now.getTime());
 
       const weekPrefix = weekOffset === 0 ? '本' : '下';
       const label = `${weekPrefix}${WEEKDAY_LABELS[targetDay]}`;
@@ -203,8 +205,7 @@ function getQuickOptions(now: Date = new Date()): Array<{ label: string; date: D
 }
 
 function formatReminderText(remindAt: number, now: number): string {
-  const diffMs = remindAt - now;
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = calcNaturalDayDiff(remindAt, now);
 
   if (diffDays <= 0) {
     return '今天';
@@ -248,7 +249,7 @@ function saveReminders(reminders: Record<string, RedeemReminder>): void {
   }
 }
 
-function setReminder(orderId: string, remindAt: number): RedeemReminder {
+function setReminder(orderId: string, remindAt: number, extra?: { productName?: string; validDate?: string }): RedeemReminder {
   const reminders = getReminders();
   const existing = reminders[orderId];
   const now = Date.now();
@@ -259,6 +260,8 @@ function setReminder(orderId: string, remindAt: number): RedeemReminder {
     remindAt,
     createdAt: existing?.createdAt ?? now,
     status: 'active',
+    ...(extra?.productName ? { productName: extra.productName } : {}),
+    ...(extra?.validDate ? { validDate: extra.validDate } : {}),
   };
 
   reminders[orderId] = reminder;
@@ -375,6 +378,7 @@ export {
   classifyIndustry,
   isFoodDrinkOrFastFood,
   isHotelPreorder,
+  calcNaturalDayDiff,
 };
 
 type IndustryCategory = 'food_formal' | 'food_drink_fast' | 'fun' | 'hotel' | 'scenic' | 'travel_agency' | 'transport' | 'other';

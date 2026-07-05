@@ -193,12 +193,12 @@ body {
 }
 
 .oc-pay-footer-amount span {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .oc-pay-footer-amount strong {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.5px;
 }
@@ -206,18 +206,18 @@ body {
 .oc-pay-footer-amount em {
   margin-top: 2px;
   color: #ff2a5f;
-  font-size: 12px;
+  font-size: 11px;
   font-style: normal;
 }
 
 .oc-pay-continue-btn {
-  flex: 0 0 208px;
-  height: 48px;
+  flex: 0 0 160px;
+  height: 40px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #ff2a5f;
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -1567,7 +1567,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  z-index: 200;
+  z-index: 9999;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1621,19 +1621,19 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink-base);
-  margin: 16px 0 10px;
+  margin: 12px 0 8px;
 }
 
 .redeem-reminder-quick-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .redeem-reminder-quick-option {
-  padding: 14px 8px;
+  padding: 10px 6px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   cursor: pointer;
   text-align: center;
@@ -1647,9 +1647,10 @@ body {
 }
 
 .redeem-reminder-quick-option .day {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-base);
+  line-height: 1.2;
 }
 
 .redeem-reminder-quick-option.active .day {
@@ -1657,9 +1658,10 @@ body {
 }
 
 .redeem-reminder-quick-option .date {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-mute);
   margin-top: 2px;
+  line-height: 1.2;
 }
 
 .redeem-reminder-date-picker {
@@ -1741,6 +1743,13 @@ body {
   box-shadow: 0 2px 8px rgba(255, 107, 107, 0.35);
   z-index: 9999;
   animation: reminderBounce 2s ease-in-out infinite;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.redeem-reminder-bubble.bubble-hidden {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
 }
 
 .redeem-reminder-bubble.clickable {
@@ -2880,22 +2889,22 @@ body {
 
 /* ============== Reservation Drawer ============== */
 .reservation-drawer-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
-  left: auto;
-  width: min(100%, var(--mobile-page-width));
-  max-width: min(100%, var(--mobile-page-width));
+  left: 0;
+  width: 100%;
+  max-width: 100%;
   background: rgba(0, 0, 0, 0.72);
-  z-index: 130;
+  z-index: 3000;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
+  align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   padding-top: 8px;
 }
@@ -2934,7 +2943,7 @@ body {
 .reservation-drawer {
   position: relative;
   width: 100%;
-  max-width: 100%;
+  max-width: var(--mobile-page-width);
   min-width: 0;
   box-sizing: border-box;
   background: linear-gradient(180deg, #fff0f7 0%, #fff7fb 52%, #ffffff 100%);
@@ -2987,7 +2996,7 @@ body {
 .close-btn {
   appearance: none;
   border: none;
-  background: #f2dfe9;
+  background: transparent;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -6553,9 +6562,9 @@ body {
 
 .oc-card-head-v2 {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  gap: 8px;
 }
 .oc-card-merchant-v2 {
   font-size: 14px;
@@ -6565,10 +6574,18 @@ body {
   align-items: center;
   gap: 4px;
   letter-spacing: -0.2px;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.oc-card-head-v2 .uoc-cat-tag {
+  flex-shrink: 0;
 }
 .oc-card-status-v2 {
   font-size: 13px;
   font-weight: 400;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .oc-card-status-v2.status-orange { color: #EF4444; }
 .oc-card-status-v2.status-green { color: #059669; }
@@ -6613,17 +6630,17 @@ body {
   gap: 6px;
   overflow: hidden;
   letter-spacing: -0.2px;
-  flex-wrap: wrap;
-}
-.oc-card-title-v2 .uoc-cat-tag {
-  flex-shrink: 0;
-  margin-top: 1px;
+  flex-wrap: nowrap;
 }
 .oc-card-title-v2 > .oc-product-name {
+  flex: 1;
+  min-width: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .oc-product-type-tag {
   flex-shrink: 0;
@@ -13670,7 +13687,7 @@ button[disabled].oc-btn-outline-v3 {
 }
 
 .travel-ticket-group {
-  padding: 10px 12px 20px;
+  padding: 10px 0 20px;
 }
 
 .travel-card {
@@ -13777,8 +13794,8 @@ button[disabled].oc-btn-outline-v3 {
   color: #FF2D55;
 }
 .tpc-v2-num {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   color: #FF2D55;
   line-height: 1;
   letter-spacing: -0.5px;
@@ -13865,8 +13882,8 @@ button[disabled].oc-btn-outline-v3 {
   color: #1F2937;
 }
 .travel-product-card-v2.confirming-card .tpc-v2-num {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   color: #1F2937;
   letter-spacing: -0.2px;
   line-height: 1;
@@ -13966,8 +13983,8 @@ button[disabled].oc-btn-outline-v3 {
   color: #1F2937;
 }
 .travel-product-card-v2.unified-card .tpc-v2-num {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   color: #1F2937;
   letter-spacing: -0.2px;
   line-height: 1;
@@ -16156,9 +16173,12 @@ button[disabled].oc-btn-outline-v3 {
 }
 
 @media (min-width: 768px) {
-  .travel-ticket-group {
+  .travel-ticket-group,
+  .oc-recommend-card-v3 {
     max-width: 460px;
     margin: 0 auto;
+  }
+  .travel-ticket-group {
     padding: 10px 0 20px;
   }
 }
@@ -16190,6 +16210,43 @@ button[disabled].oc-btn-outline-v3 {
 .food-fulfill-list-tag.food-ff-delivery {
   background: #E6F4FF;
   color: #1677FF;
+}
+
+/* 子履约状态标签 - 用于待评价Tab下的餐饮订单状态标识 */
+.food-sub-status-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+/* 待履约 - 橙色 */
+.food-sub-status-tag.fss-pending {
+  background: #FFF7E6;
+  color: #FF8C00;
+}
+
+/* 履约中 - 蓝色 */
+.food-sub-status-tag.fss-processing {
+  background: #E6F4FF;
+  color: #1677FF;
+}
+
+/* 已完成 - 绿色 */
+.food-sub-status-tag.fss-completed {
+  background: #E6FFF0;
+  color: #00B42A;
+}
+
+/* 已取消 - 灰色 */
+.food-sub-status-tag.fss-cancelled {
+  background: #F2F3F5;
+  color: #86909C;
 }
 
 /* 场景3: 仅在线点单 突出卡片（唯一操作） */

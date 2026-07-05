@@ -1,0 +1,101 @@
+.reorder-feature-card {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.reorder-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #f5f6f8;
+}
+
+.reorder-card-icon {
+  font-size: 20px;
+}
+
+.reorder-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2329;
+  margin: 0;
+}
+
+.reorder-order-preview {
+  padding: 14px 16px;
+  background: #fafbfc;
+}
+
+.reorder-order-preview .oc-order-card {
+  box-shadow: none;
+  border: 1px solid #e5e6eb;
+}
+
+.reorder-tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #86909c;
+  background: #f7f8fa;
+  border-top: 1px solid #f0f1f2;
+}
+
+.reorder-tips-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.reorder-tips-text {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.reorder-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  border-top: 1px solid #f5f6f8;
+}
+
+.reorder-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.reorder-btn-secondary {
+  background: #f7f8fa;
+  color: #4e5969;
+  border: 1px solid #e5e6eb;
+}
+
+.reorder-btn-secondary:active {
+  background: #eef0f3;
+}
+
+.reorder-btn-primary {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  color: #ffffff;
+}
+
+.reorder-btn-primary:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+.reorder-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -52,18 +52,24 @@ export type RedeemMethod =
 /** 订单状态 */
 export type OrderStatus =
   | 'pending_payment'
+  | 'pending_use'
+  | 'pending_booking'
+  | 'confirmed'
+  | 'in_delivery'
   | 'unredeemed'
   | 'redeemed'
+  | 'completed'
   | 'canceled'
   | 'refunding'
   | 'refunded'
+  | 'refund_card'
   | 'refund_failed';
 
 /** 酒店商品类型 */
 export type HotelProductType = 'presale_voucher' | 'calendar_room';
 
 /** 景区商品类型 */
-export type ScenicProductType = 'group_buy' | 'presale_voucher' | 'calendar_ticket';
+export type ScenicProductType = 'group_buy' | 'group_voucher' | 'presale_voucher' | 'calendar_ticket';
 
 /** 景区预售券订单状态 */
 export type ScenicPresaleStatus =
@@ -351,9 +357,11 @@ export interface RedeemReminder {
   remindAt: number;
   createdAt: number;
   status: 'active' | 'canceled' | 'triggered';
+  productName?: string;
+  validDate?: string;
 }
 
-/** 订单数据模型（最小化，仅覆盖取餐码场景） */
+/** 订单数据模型 */
 export interface OrderData {
   orderId: string;
   channel: OrderChannel;
@@ -362,13 +370,20 @@ export interface OrderData {
   supportedRedeemMethods?: SupportedRedeemMethod[];
   category?: OrderCategory;
   subCategory?: 'drink' | 'fast_food' | 'formal_meal' | string;
+  productType?: string;
   store: string;
+  storeName?: string;
   storeAddress?: string;
-  itemSummary: string; // 例如："燕麦拿铁 × 1, 抹茶可颂 × 1"
+  itemSummary: string;
+  totalAmount?: number;
+  productImage?: string;
+  tags?: string[];
+  distance?: string;
   orderDetailUrl?: string;
-  pickupCode?: string; // 仅点单核销且已分配时存在
-  voucherCode?: string; // 券码核销时的券码券号
+  pickupCode?: string;
+  voucherCode?: string;
   paymentExpireAt?: number;
+  payExpireAt?: number;
   progress?: MakeStep[];
   deliveryProgress?: DeliveryStep[];
   riderName?: string;
@@ -384,6 +399,10 @@ export interface OrderData {
   travelInfo?: TravelInfo;
   fulfillmentAlert?: FulfillmentAlert;
   redeemReminder?: RedeemReminder;
+  checkInDate?: string;
+  checkOutDate?: string;
+  visitDate?: string;
+  deliveryEta?: string;
 }
 
 /** 订单品类（兼容旧枚举值 + 新标准类目） */
@@ -532,9 +551,10 @@ export type MessageAction =
       orderId: string;
     }
   | {
-      label: '提前预约免排队';
+      label: '提前预约免排队' | '帮我约';
       kind: 'open_reservation';
       orderId: string;
+      storeName?: string;
     }
   | {
       label: '催一下';
