@@ -191,7 +191,7 @@ function handlePickupWithContext(
             role: 'assistant',
             contentType: 'text',
             content: '',
-            orderCard: ORDER_FOOD_COMPLETED_SELFORDER,
+            orderCard: orderCard,
           },
         ],
         newDialogState: {
@@ -209,6 +209,7 @@ function handlePickupWithContext(
             role: 'assistant',
             contentType: 'text',
             content: '该订单为配送订单，没有取餐码，可以查看配送进度。',
+            quickReplies: [createQuickReply('qr-view-delivery', '查看配送进度')],
           },
         ],
         newDialogState: {
@@ -223,20 +224,65 @@ function handlePickupWithContext(
   if (
     status === 'pending_accept' ||
     status === 'preparing' ||
-    status === 'waiting_pickup'
+    status === 'waiting_pickup' ||
+    status === 'delivering'
   ) {
-    let pickupOrder = orderCard;
+    if (redeemMethod === 'voucher') {
+      return {
+        messages: [
+          {
+            role: 'assistant',
+            contentType: 'text',
+            content: '该订单为到店券码核销订单，没有取餐码。',
+            quickReplies: [createQuickReply('qr-select-order', '选择订单', 'open_order_selector')],
+          },
+        ],
+        newDialogState: {
+          ...dialogState,
+          currentIntent: 'pickup_code',
+          currentStep: 'completed',
+        },
+      };
+    }
+
+    if (redeemMethod === 'delivery') {
+      let deliveryReplyText = '';
+
+      if (status === 'pending_accept') {
+        deliveryReplyText = '该订单为配送订单，没有取餐码，商家正在确认订单~';
+      } else if (status === 'preparing') {
+        deliveryReplyText = '该订单为配送订单，没有取餐码，商家正在备餐中~';
+      } else if (status === 'waiting_pickup') {
+        deliveryReplyText = '该订单为配送订单，没有取餐码，正在等待骑手取餐~';
+      } else if (status === 'delivering') {
+        deliveryReplyText = '该订单为配送订单，没有取餐码，骑手正在配送中，预计很快送达~';
+      }
+
+      return {
+        messages: [
+          {
+            role: 'assistant',
+            contentType: 'text',
+            content: deliveryReplyText,
+            quickReplies: [createQuickReply('qr-view-delivery', '查看配送进度')],
+          },
+        ],
+        newDialogState: {
+          ...dialogState,
+          currentIntent: 'pickup_code',
+          currentStep: 'completed',
+        },
+      };
+    }
+
     let replyText = '';
 
     if (status === 'pending_accept') {
       replyText = '订单已提交，商家确认后将生成取餐码。';
-      pickupOrder = ORDER_FOOD_PENDING_ACCEPT;
     } else if (status === 'preparing') {
       replyText = '商家正在备餐中，请耐心等待取餐~';
-      pickupOrder = ORDER_FOOD_PREPARING;
     } else if (status === 'waiting_pickup') {
       replyText = '餐品已备好，可以取餐啦！';
-      pickupOrder = ORDER_FOOD_WAITING_PICKUP;
     }
 
     return {
@@ -251,7 +297,7 @@ function handlePickupWithContext(
           role: 'assistant',
           contentType: 'text',
           content: '',
-          orderCard: pickupOrder,
+          orderCard: orderCard,
         },
       ],
       newDialogState: {

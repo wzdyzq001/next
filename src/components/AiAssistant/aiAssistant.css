@@ -611,7 +611,8 @@
  * 注意：如需调整此宽度，必须先与产品负责人确认后方可修改。
  *       不得随意修改此宽度参数。
  * ============================================================ */
-.ai-message.assistant:has(.ai-message-order-card) .ai-message-bubble {
+.ai-message.assistant:has(.ai-message-order-card) .ai-message-bubble,
+.ai-message.assistant:has(.ai-message-order-list) .ai-message-bubble {
   width: 90%;
   max-width: 90%;
   padding: 0;
@@ -4077,30 +4078,53 @@
 .ai-message-order-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   margin-top: 8px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ai-message-order-list .oc-compact-card {
+  border-radius: 0;
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.ai-message-order-list .oc-compact-card:last-child {
+  border-bottom: none;
+  border-radius: 0 0 12px 12px;
+}
+
+.ai-message-order-list .oc-compact-card:first-child {
+  border-radius: 12px 12px 0 0;
+}
+
+.ai-message-order-list:has(.ai-order-list-view-all) .oc-compact-card:last-child {
+  border-radius: 0;
+  border-bottom: 1px solid #f2f3f5;
 }
 
 .ai-order-list-view-all {
   width: 100%;
-  padding: 10px 0;
+  padding: 12px 16px;
+  background: #f8fafc;
   border: none;
-  background: transparent;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
   color: #3b82f6;
-  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   text-align: center;
-  border-top: 1px solid #f0f1f5;
-  margin-top: 4px;
-  transition: color 0.15s ease;
+  transition: background 0.15s ease;
+  border-radius: 0 0 12px 12px;
 }
 
 .ai-order-list-view-all:hover {
-  color: #2563eb;
+  background: #f1f5f9;
 }
 
 .ai-order-list-view-all:active {
-  color: #1d4ed8;
+  background: #e2e8f0;
 }
 
 .store-list-sheet-overlay {

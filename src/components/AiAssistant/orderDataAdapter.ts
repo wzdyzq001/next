@@ -121,7 +121,8 @@ function getDefaultThumbnail(category: OrderCategory): string {
 }
 
 function buildExtension(order: OrderData): OrderCardData['extension'] {
-  const { category, status, hotelInfo, scenicInfo, travelInfo, pickupCode, payExpireAt } = order;
+  const { category, status, hotelInfo, scenicInfo, travelInfo, payExpireAt } = order;
+  const pickupCode = order.pickupCode || order.foodSubOrder?.pickupCode;
 
   if (status === 'pending_payment' && payExpireAt) {
     const remainingMs = payExpireAt - Date.now();
@@ -134,12 +135,100 @@ function buildExtension(order: OrderData): OrderCardData['extension'] {
     };
   }
 
-  if (pickupCode && (status === 'pending_use' || status === 'in_delivery' || status === 'confirmed')) {
+  if (pickupCode && (status === 'pending_use' || status === 'in_delivery' || status === 'confirmed' || status === 'completed')) {
+    const isPreparing = status === 'confirmed';
+    const isWaitingPickup = status === 'pending_use';
+    const isDelivering = status === 'in_delivery';
+    const isCompleted = status === 'completed';
+    const isSelfOrder = order.redeemMethod === 'self_order' || order.foodSubOrder?.type === 'self_order';
+
+    if (isSelfOrder) {
+      const steps: Array<{ label: string; state: 'done' | 'active' | 'pending' | 'error'; time?: string }> = isPreparing
+        ? [
+            { label: '下单成功', state: 'done' },
+            { label: '商家已接单', state: 'done' },
+            { label: '制作中', state: 'active' },
+            { label: '待取餐', state: 'pending' },
+            { label: '已取餐', state: 'pending' },
+          ]
+        : isWaitingPickup
+        ? [
+            { label: '下单成功', state: 'done' },
+            { label: '商家已接单', state: 'done' },
+            { label: '制作中', state: 'done' },
+            { label: '待取餐', state: 'active' },
+            { label: '已取餐', state: 'pending' },
+          ]
+        : [
+            { label: '下单成功', state: 'done' },
+            { label: '商家已接单', state: 'done' },
+            { label: '制作中', state: 'done' },
+            { label: '待取餐', state: 'done' },
+            { label: '已取餐', state: 'done' },
+          ];
+
+      let summary = '';
+      let pickupTime = '';
+      if (isPreparing) {
+        pickupTime = '备餐中';
+      } else if (isWaitingPickup) {
+        summary = '已完成制作请尽快取餐';
+        pickupTime = '待取餐';
+      } else if (isCompleted) {
+        summary = '已取餐，祝用餐愉快';
+        pickupTime = '已取餐';
+      }
+
+      return {
+        type: 'pickup_completed',
+        title: '取餐信息',
+        summary,
+        pickupCode,
+        hasPickupCode: true,
+        pickupTime,
+        estimatedTime: isPreparing ? '约15分钟' : undefined,
+        info: !isCompleted
+          ? [{ label: '门店', value: order.store || '' }]
+          : undefined,
+        steps,
+      };
+    }
+
+    const pickupTime = isPreparing ? '备餐中' : isWaitingPickup ? '待取餐' : isDelivering ? '配送中' : '已完成';
+    const estimatedTime = isPreparing ? '约15分钟' : undefined;
+
+    const steps: Array<{ label: string; state: 'done' | 'active' | 'pending' | 'error'; time?: string }> = isPreparing
+      ? [
+          { label: '下单成功', state: 'done' },
+          { label: '商家已接单', state: 'done' },
+          { label: '制作中', state: 'active' },
+          { label: '待取餐', state: 'pending' },
+          { label: '已取餐', state: 'pending' },
+        ]
+      : isWaitingPickup
+      ? [
+          { label: '下单成功', state: 'done' },
+          { label: '商家已接单', state: 'done' },
+          { label: '制作中', state: 'done' },
+          { label: '待取餐', state: 'active' },
+          { label: '已取餐', state: 'pending' },
+        ]
+      : [
+          { label: '下单成功', state: 'done' },
+          { label: '商家已接单', state: 'done' },
+          { label: '制作中', state: 'done' },
+          { label: '配送中', state: 'active' },
+          { label: '已送达', state: 'pending' },
+        ];
+
     return {
       type: 'pickup_code',
       title: '取餐码',
       pickupCode,
       hasPickupCode: true,
+      pickupTime,
+      estimatedTime,
+      steps,
     };
   }
 
@@ -422,8 +511,9 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
   let subStatus: string | undefined;
   let subStatusLabel: string | undefined;
   let fulfillmentType: 'self_order' | 'delivery' | 'voucher' | undefined;
+  let redeemMethod: 'voucher' | 'self_order' | 'delivery' | undefined;
 
-  if (category === 'food' && mainStatus === 'redeemed') {
+  if (category === 'food') {
     const modes: Array<'code' | 'order' | 'delivery'> = [];
     if (order.supportedRedeemMethods?.includes('voucher')) modes.push('code');
     if (order.supportedRedeemMethods?.includes('self_order')) modes.push('order');
@@ -436,8 +526,14 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
       fulfillmentType = getFoodSubStatusFulfillmentType(inferredSubStatus);
     } else if (order.foodSubOrder) {
       fulfillmentType = order.foodSubOrder.type;
-    } else if (order.redeemMethod && order.redeemMethod !== 'none') {
+    } else if (order.redeemMethod && order.redeemMethod !== 'none' && order.redeemMethod !== 'manual') {
       fulfillmentType = order.redeemMethod as any;
+    }
+
+    if (fulfillmentType) {
+      redeemMethod = fulfillmentType;
+    } else if (order.redeemMethod && order.redeemMethod !== 'none' && order.redeemMethod !== 'manual') {
+      redeemMethod = order.redeemMethod as any;
     }
   }
 
@@ -455,6 +551,7 @@ export function convertOrderDataToCardData(order: OrderData): OrderCardData {
     categoryLabel: CATEGORY_LABEL_MAP[category] || category,
     productType,
     productTypeLabel: PRODUCT_TYPE_LABEL_MAP[productType] || productType,
+    redeemMethod,
     fulfillmentType,
     mainStatus,
     mainStatusLabel,
@@ -734,15 +831,21 @@ function buildListItemExtension(item: OrderListItem): OrderCardData['extension']
       };
     }
     return {
-      type: 'progress',
-      title: '取餐进度',
-      estimatedTime: '预计8分钟后可取',
+      type: 'pickup_completed',
+      title: '取餐信息',
+      pickupCode: 'A088',
+      pickupTime: '备餐中 · 约8分钟',
+      hasPickupCode: true,
+      estimatedTime: '约8分钟',
+      info: [
+        { label: '门店', value: item.merchant || '' },
+      ],
       steps: [
         { label: '下单成功', state: 'done', time: '10:02' },
-        { label: '商家已确认', state: 'done', time: '10:03' },
+        { label: '商家已接单', state: 'done', time: '10:03' },
         { label: '制作中', state: 'active', time: '10:05' },
         { label: '待取餐', state: 'pending' },
-        { label: '已完成', state: 'pending' },
+        { label: '已取餐', state: 'pending' },
       ],
     };
   }
@@ -764,9 +867,15 @@ function buildListItemExtension(item: OrderListItem): OrderCardData['extension']
       };
     }
     return {
-      type: 'progress',
-      title: '取餐进度',
-      estimatedTime: '预计8分钟后可取',
+      type: 'pickup_completed',
+      title: '取餐信息',
+      pickupCode: 'A088',
+      pickupTime: '商家已接单',
+      hasPickupCode: true,
+      estimatedTime: '约8分钟后可取',
+      info: [
+        { label: '门店', value: item.merchant || '' },
+      ],
       steps: [
         { label: '下单成功', state: 'done', time: '10:02' },
         { label: '商家已接单', state: 'done', time: '10:03' },
@@ -817,15 +926,14 @@ function buildListItemExtension(item: OrderListItem): OrderCardData['extension']
       pickupCode: 'A088',
       pickupTime: '待取餐',
       info: [
-        { label: '取餐号', value: 'A088' },
         { label: '门店', value: '瑞幸咖啡(科兴店)' },
       ],
       steps: [
         { label: '下单成功', state: 'done' as const, time: '10:02' },
         { label: '商家已接单', state: 'done' as const, time: '10:03' },
         { label: '制作中', state: 'done' as const, time: '10:05' },
-        { label: '已完成', state: 'active' as const, time: '10:12' },
-        { label: '待取餐', state: 'pending' as const },
+        { label: '待取餐', state: 'active' as const, time: '请取餐' },
+        { label: '已取餐', state: 'pending' as const },
       ],
     };
   }
@@ -1547,8 +1655,9 @@ export function convertOrderListItemToCardData(item: OrderListItem): OrderCardDa
   let subStatus: string | undefined;
   let subStatusLabel: string | undefined;
   let fulfillmentType: 'self_order' | 'delivery' | 'voucher' | undefined;
+  let redeemMethod: 'voucher' | 'self_order' | 'delivery' | undefined;
 
-  if (category === 'food' && mainStatus === 'redeemed') {
+  if (category === 'food') {
     const inferredSubStatus = inferFoodSubStatusFromText(statusText, item.fulfillmentModes);
     if (inferredSubStatus) {
       subStatus = inferredSubStatus;
@@ -1558,11 +1667,15 @@ export function convertOrderListItemToCardData(item: OrderListItem): OrderCardDa
       const inferredFulfillment = inferFulfillmentTypeFromModes(item.fulfillmentModes, statusText);
       if (inferredFulfillment) {
         fulfillmentType = inferredFulfillment;
-        if (inferredFulfillment === 'voucher') {
+        if (inferredFulfillment === 'voucher' && mainStatus === 'redeemed') {
           subStatus = 'voucher_redeemed';
           subStatusLabel = '已核销';
         }
       }
+    }
+
+    if (fulfillmentType) {
+      redeemMethod = fulfillmentType;
     }
   }
 
@@ -1581,6 +1694,7 @@ export function convertOrderListItemToCardData(item: OrderListItem): OrderCardDa
     categoryLabel: CATEGORY_LABEL_MAP[category] || category,
     productType,
     productTypeLabel: PRODUCT_TYPE_LABEL_MAP[productType] || productType,
+    redeemMethod,
     redeemTypes,
     fulfillmentType,
     mainStatus,

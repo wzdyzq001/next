@@ -9,7 +9,16 @@ interface OrderCardActionsProps {
 
 export const OrderCardActions: React.FC<OrderCardActionsProps> = ({ order, onActionClick }) => {
   const hasPaymentCountdown = !!order.paymentCountdown || order.extension?.type === 'payment_countdown';
-  const hasActions = order.actions.length > 0;
+  const hasPickupCode = !!(order.extension?.pickupCode && (order.extension.type === 'pickup_code' || order.extension.type === 'pickup_completed'));
+
+  const filteredActions = order.actions.filter(action => {
+    if (hasPickupCode && action.label.includes('查看取餐码')) {
+      return false;
+    }
+    return true;
+  });
+
+  const hasActions = filteredActions.length > 0;
 
   if (!hasActions && !hasPaymentCountdown) {
     return null;
@@ -58,8 +67,8 @@ export const OrderCardActions: React.FC<OrderCardActionsProps> = ({ order, onAct
     return label;
   };
 
-  const secondaryActions = order.actions.filter(a => a.type === 'secondary');
-  const primaryActions = order.actions.filter(a => a.type === 'primary');
+  const secondaryActions = filteredActions.filter(a => a.type === 'secondary');
+  const primaryActions = filteredActions.filter(a => a.type === 'primary');
   const totalButtons = secondaryActions.length + primaryActions.length;
   const maxButtons = 3;
   const visibleSecondaryCount = totalButtons > maxButtons

@@ -253,19 +253,24 @@ const ORDER_FOOD_PREPARING: OrderCardData = {
   statusText: '备餐中 · 约15分钟',
   statusColor: '#f59e0b',
   extension: {
-    type: 'pickup_code',
-    title: '取餐码',
+    type: 'pickup_completed',
+    title: '取餐信息',
     pickupCode: 'A886',
     hasPickupCode: true,
+    pickupTime: '备餐中 · 约15分钟',
+    estimatedTime: '约15分钟',
+    info: [
+      { label: '门店', value: '喜茶(人民广场店)' },
+    ],
     steps: [
-      { label: '已下单', state: 'done', time: '14:20' },
-      { label: '备餐中', state: 'active', time: '制作中' },
-      { label: '待取餐', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '14:20' },
+      { label: '商家已接单', state: 'done', time: '14:21' },
+      { label: '制作中', state: 'active', time: '14:25' },
+      { label: '待取餐', state: 'pending' },
+      { label: '已取餐', state: 'pending' },
     ],
   },
-  actions: [
-    { label: '查看取餐码', type: 'primary' },
-  ],
+  actions: [],
   suggestions: [],
 };
 
@@ -290,14 +295,19 @@ const ORDER_FOOD_PREPARING_COLLAPSED: OrderCardData = {
   statusColor: '#f59e0b',
   extension: {
     type: 'pickup_completed',
-    title: '取餐码',
-    summary: '取餐码 A886 · 备餐中 · 约15分钟',
+    title: '取餐信息',
     pickupCode: 'A886',
+    pickupTime: '备餐中 · 约15分钟',
     hasPickupCode: true,
+    info: [
+      { label: '门店', value: '喜茶(人民广场店)' },
+    ],
     steps: [
-      { label: '已下单', state: 'done', time: '14:20' },
-      { label: '备餐中', state: 'active', time: '制作中' },
-      { label: '待取餐', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '14:20' },
+      { label: '商家已接单', state: 'done', time: '14:21' },
+      { label: '制作中', state: 'active', time: '14:25' },
+      { label: '待取餐', state: 'pending' },
+      { label: '已取餐', state: 'pending' },
     ],
   },
   actions: [],
@@ -324,19 +334,24 @@ const ORDER_FOOD_PREPARING_2: OrderCardData = {
   statusText: '备餐中 · 约8分钟',
   statusColor: '#f59e0b',
   extension: {
-    type: 'pickup_code',
-    title: '取餐码',
+    type: 'pickup_completed',
+    title: '取餐信息',
     pickupCode: 'B233',
     hasPickupCode: true,
+    pickupTime: '备餐中 · 约8分钟',
+    estimatedTime: '约8分钟',
+    info: [
+      { label: '门店', value: '星巴克(南京西路店)' },
+    ],
     steps: [
-      { label: '已下单', state: 'done', time: '14:30' },
-      { label: '备餐中', state: 'active', time: '制作中' },
-      { label: '待取餐', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '14:30' },
+      { label: '商家已接单', state: 'done', time: '14:31' },
+      { label: '制作中', state: 'active', time: '14:35' },
+      { label: '待取餐', state: 'pending' },
+      { label: '已取餐', state: 'pending' },
     ],
   },
-  actions: [
-    { label: '查看取餐码', type: 'primary' },
-  ],
+  actions: [],
   suggestions: [],
 };
 
@@ -360,19 +375,23 @@ const ORDER_FOOD_WAITING_PICKUP: OrderCardData = {
   statusText: '待取餐',
   statusColor: '#10b981',
   extension: {
-    type: 'pickup_code',
-    title: '取餐码',
+    type: 'pickup_completed',
+    title: '取餐信息',
+    summary: '已完成制作请尽快取餐',
     pickupCode: 'C101',
-    hasPickupCode: true,
+    pickupTime: '待取餐',
+    info: [
+      { label: '门店', value: '麦当劳(徐家汇店)' },
+    ],
     steps: [
-      { label: '已下单', state: 'done', time: '14:10' },
-      { label: '备餐中', state: 'done', time: '14:20' },
+      { label: '下单成功', state: 'done', time: '14:10' },
+      { label: '商家已接单', state: 'done', time: '14:11' },
+      { label: '制作中', state: 'done', time: '14:20' },
       { label: '待取餐', state: 'active', time: '请取餐' },
+      { label: '已取餐', state: 'pending' },
     ],
   },
-  actions: [
-    { label: '查看取餐码', type: 'primary' },
-  ],
+  actions: [],
   suggestions: [],
 };
 
@@ -559,14 +578,18 @@ const ORDER_FOOD_COMPLETED_SELFORDER: OrderCardData = {
   extension: {
     type: 'pickup_completed',
     title: '取餐信息',
-    summary: '取餐码 A886 · 14:32 取餐',
+    summary: '已取餐，祝用餐愉快',
     pickupCode: 'A886',
-    pickupTime: '14:32',
+    pickupTime: '已取餐',
     hasPickupCode: true,
     channel: 'self_order',
+    info: [
+      { label: '取餐时间', value: '14:32' },
+    ],
     steps: [
-      { label: '已下单', state: 'done', time: '14:20' },
-      { label: '备餐中', state: 'done', time: '14:25' },
+      { label: '下单成功', state: 'done', time: '14:20' },
+      { label: '商家已接单', state: 'done', time: '14:21' },
+      { label: '制作中', state: 'done', time: '14:25' },
       { label: '待取餐', state: 'done', time: '14:30' },
       { label: '已取餐', state: 'done', time: '14:32' },
     ],
@@ -854,14 +877,15 @@ const ORDER_FOOD_PENDING_ACCEPT: OrderCardData = {
   statusText: '待确认 · 商家确认中',
   statusColor: '#f59e0b',
   extension: {
-    type: 'pickup_code',
-    title: '取餐码',
-    hasPickupCode: false,
+    type: 'progress',
+    title: '取餐进度',
+    estimatedTime: '预计3分钟内接单',
     steps: [
-      { label: '已下单', state: 'done', time: '14:20' },
-      { label: '待确认', state: 'active', time: '确认中' },
-      { label: '备餐中', state: 'pending', time: '--' },
-      { label: '待取餐', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '14:20' },
+      { label: '商家已接单', state: 'active', time: '确认中' },
+      { label: '制作中', state: 'pending' },
+      { label: '待取餐', state: 'pending' },
+      { label: '已取餐', state: 'pending' },
     ],
   },
   actions: [

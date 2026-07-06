@@ -107,6 +107,7 @@ const AiAssistantOverlay: React.FC = () => {
   const [clearHistoryConfirmOpen, setClearHistoryConfirmOpen] = useState(false);
   const [showOrderHintBubble, setShowOrderHintBubble] = useState(true);
   const [bubbleFadingOut, setBubbleFadingOut] = useState(false);
+  const [expandedOrderLists, setExpandedOrderLists] = useState<Record<string, boolean>>({});
   const orderHintBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const orderHintBubbleFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -260,7 +261,6 @@ const AiAssistantOverlay: React.FC = () => {
           break;
         case 'pickup_code':
           sendMessage('查询取餐码');
-          showToast('功能还有一些问题待优化，可以先体验～');
           break;
         case 'delivery':
           sendMessage('查询配送进度');
@@ -850,7 +850,10 @@ const AiAssistantOverlay: React.FC = () => {
                     )}
                     {msg.orderList && msg.orderList.length > 0 && (
                       <div className="ai-message-order-list">
-                        {msg.orderList.slice(0, 3).map((order) => (
+                        {(expandedOrderLists[msg.id]
+                          ? msg.orderList
+                          : msg.orderList.slice(0, 2)
+                        ).map((order) => (
                           <CompactOrderCard
                             key={order.id}
                             order={order}
@@ -859,18 +862,19 @@ const AiAssistantOverlay: React.FC = () => {
                             }}
                           />
                         ))}
-                        {msg.orderList.length > 3 && (
+                        {msg.orderList.length > 2 && (
                           <button
                             className="ai-order-list-view-all"
                             onClick={() => {
-                              msg.orderList!.forEach((order, idx) => {
-                                setTimeout(() => {
-                                  sendOrderCard(order as any);
-                                }, idx * 300);
-                              });
+                              setExpandedOrderLists((prev) => ({
+                                ...prev,
+                                [msg.id]: !prev[msg.id],
+                              }));
                             }}
                           >
-                            查看全部 {msg.orderList.length} 个订单
+                            {expandedOrderLists[msg.id]
+                              ? '收起'
+                              : `查看全部 ${msg.orderList.length} 个订单`}
                           </button>
                         )}
                       </div>
@@ -1045,7 +1049,7 @@ const AiAssistantOverlay: React.FC = () => {
               提醒
             </button>
             <button
-              className="ai-footer-quick-action-btn ai-footer-quick-action-btn-disabled"
+              className="ai-footer-quick-action-btn"
               onClick={() => handleQuickActionClick({ id: 'qa-pickup-code', label: '取餐码', type: 'pickup_code' })}
             >
               取餐码

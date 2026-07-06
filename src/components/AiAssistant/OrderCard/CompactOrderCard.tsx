@@ -43,24 +43,46 @@ export const CompactOrderCard: React.FC<CompactOrderCardProps> = ({
     return <span className="oc-compact-thumb-emoji">{order.thumbnail}</span>;
   };
 
+  const hasPickupCode = !!order.extension?.pickupCode;
+  const hasStoreInfo = !!order.storeName;
+
   return (
     <div className="oc-compact-card" onClick={onClick}>
       <div className="oc-compact-thumb">
         {renderThumbnail()}
       </div>
       <div className="oc-compact-info">
-        <div className="oc-compact-name">{order.productName}</div>
-        <div className="oc-compact-bottom">
-          <span className="oc-compact-price">
-            <span className="oc-price-symbol">¥</span>
-            <span className="oc-price-num">{order.price.toFixed(2)}</span>
-          </span>
+        <div className="oc-compact-top-row">
+          <div className="oc-compact-name">{order.productName}</div>
           <span
             className={`oc-compact-status status-${order.statusColor}`}
           >
             {order.statusText}
           </span>
         </div>
+        {hasStoreInfo && (
+          <div className="oc-compact-store">
+            {order.distance} {order.storeName}
+          </div>
+        )}
+        {hasPickupCode ? (
+          <div className="oc-compact-code-row">
+            <span className="oc-compact-code">
+              {order.extension!.pickupCode}
+            </span>
+            <span className="oc-compact-price">
+              <span className="oc-price-symbol">¥</span>
+              <span className="oc-price-num">{order.price.toFixed(2)}</span>
+            </span>
+          </div>
+        ) : (
+          <div className="oc-compact-bottom">
+            <span className="oc-compact-price">
+              <span className="oc-price-symbol">¥</span>
+              <span className="oc-price-num">{order.price.toFixed(2)}</span>
+            </span>
+          </div>
+        )}
       </div>
       {actionLabel && onPrimaryAction && (
         <button

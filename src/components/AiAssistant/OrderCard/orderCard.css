@@ -624,9 +624,23 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 12px;
-  padding: 12px 14px;
+  margin-top: 0;
+  padding: 12px 14px 16px;
   border-top: 1px solid #f2f3f5;
+}
+
+.oc-pickup-detail .oc-progress-header {
+  margin-bottom: 12px;
+}
+
+.oc-card-extension .oc-pickup-completed .oc-pickup-summary {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.oc-card-extension .oc-pickup-completed .oc-pickup-detail {
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .oc-pickup-info {
@@ -1139,9 +1153,9 @@
 
 .oc-compact-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
   background: #ffffff;
   border-radius: 12px;
   cursor: pointer;
@@ -1153,14 +1167,14 @@
 }
 
 .oc-compact-thumb {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 24px;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -1189,6 +1203,51 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-compact-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.oc-compact-store {
+  font-size: 12px;
+  color: #86909c;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-compact-code-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.oc-compact-code {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ff7d00;
+  letter-spacing: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+  font-family: 'SF Mono', 'Monaco', monospace;
 }
 
 .oc-compact-bottom {

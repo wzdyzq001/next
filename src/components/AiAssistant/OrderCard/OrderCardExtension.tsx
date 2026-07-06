@@ -16,7 +16,72 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
   }
 
   const isDeliveryCompleted = ext.type === 'delivery_completed';
-  const isPickupCompleted = ext.type === 'pickup_completed';
+  const isSelfPickupOrder = order.redeemMethod === 'self_order';
+  const hasPickupCode = !!ext.pickupCode;
+  const isPickupCompleted = (isSelfPickupOrder && hasPickupCode) ||
+    ext.type === 'pickup_completed';
+
+  const getPickupSummaryText = () => {
+    if (ext.summary) {
+      const cleaned = ext.summary.replace(/^取餐码\s+\S+\s*·\s*/, '');
+      if (cleaned) return cleaned;
+    }
+    if (ext.pickupTime) {
+      return ext.pickupTime;
+    }
+    const orderStatus = order.orderStatus;
+    if (orderStatus === 'preparing') return '备餐中';
+    if (orderStatus === 'waiting_pickup') return '已完成制作请尽快取餐';
+    if (orderStatus === 'completed' || orderStatus === 'picked_up') return '已取餐，祝用餐愉快';
+    if (ext.steps && ext.steps.length > 0) {
+      const activeStep = ext.steps.find(s => s.state === 'active');
+      if (activeStep) return activeStep.label;
+    }
+    return '';
+  };
+
+  const getPickupProgressSteps = () => {
+    type StepState = 'done' | 'active' | 'pending' | 'error';
+    const steps: Array<{ label: string; state: StepState; time: string }> = [
+      { label: '下单成功', state: 'done', time: '' },
+      { label: '商家已接单', state: 'done', time: '' },
+      { label: '制作中', state: 'pending', time: '' },
+      { label: '待取餐', state: 'pending', time: '' },
+      { label: '已取餐', state: 'pending', time: '' },
+    ];
+
+    const status = order.orderStatus;
+
+    if (status === 'pending_accept') {
+      steps[0].state = 'done';
+      steps[1].state = 'active';
+    } else if (status === 'preparing') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'active';
+    } else if (status === 'waiting_pickup') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'done';
+      steps[3].state = 'active';
+    } else if (status === 'completed' || status === 'picked_up') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'done';
+      steps[3].state = 'done';
+      steps[4].state = 'done';
+    }
+
+    if (ext.steps && ext.steps.length > 0) {
+      ext.steps.forEach((s, i) => {
+        if (steps[i] && s.time) {
+          steps[i].time = s.time;
+        }
+      });
+    }
+
+    return steps;
+  };
   const isExpanded = expanded === order.id;
 
   const renderProgressIcon = () => {
@@ -178,34 +243,6 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
     );
   };
 
-  const renderPickupCode = () => {
-    if (ext.hasPickupCode === false) {
-      return (
-        <div className="oc-pickup-no-code">
-          <span className="oc-pickup-channel">
-            {ext.channel === 'douyin' ? '抖音小程序核销' : '到店核销'}
-          </span>
-        </div>
-      );
-    }
-    if (ext.pickupCode) {
-      return (
-        <div className="oc-pickup-with-progress">
-          <div className="oc-pickup-simple">
-            <span className="oc-pickup-code">{ext.pickupCode}</span>
-            <span className="oc-pickup-time">{ext.pickupTime}</span>
-          </div>
-          {ext.steps && ext.steps.length > 0 && (
-            <div className="oc-pickup-progress-steps">
-              {renderSteps()}
-            </div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="oc-card-extension">
       {isDeliveryCompleted ? (
@@ -247,7 +284,7 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
               )}
             </div>
             <div className="oc-pickup-summary-right">
-              <span className="oc-pickup-summary-text">{ext.summary?.replace(/^取餐码\s+\S+\s*·\s*/, '')}</span>
+              <span className="oc-pickup-summary-text">{getPickupSummaryText()}</span>
               <span className="oc-pickup-arrow-icon">
                 <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
                   <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -257,7 +294,27 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
           </div>
           {isExpanded && (
             <div className="oc-pickup-detail">
-              {ext.steps && renderSteps()}
+              <div className="oc-progress-header">
+                <span className="oc-progress-title">
+                  {renderProgressIcon()}
+                  取餐进度
+                </span>
+                {ext.estimatedTime && (
+                  <span className="oc-progress-estimate orange">
+                    {ext.estimatedTime}
+                  </span>
+                )}
+              </div>
+              <div className="oc-progress-steps">
+                {getPickupProgressSteps().map((step, i) => (
+                  <div key={i} className={`oc-step ${step.state}`}>
+                    <div className="oc-step-dot"></div>
+                    <div className="oc-step-label">{step.label}</div>
+                    {step.time && <div className="oc-step-time">{step.time}</div>}
+                    {i < 4 && <div className="oc-step-line"></div>}
+                  </div>
+                ))}
+              </div>
               {ext.info && (
                 <div className="oc-pickup-info">
                   {ext.info.map((item, i) => (
@@ -271,8 +328,6 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
             </div>
           )}
         </div>
-      ) : ext.type === 'pickup_code' ? (
-        renderPickupCode()
       ) : ext.type === 'hotel_stay' ? (
         renderHotelStay()
       ) : ext.type === 'scenic_entry' ? (
