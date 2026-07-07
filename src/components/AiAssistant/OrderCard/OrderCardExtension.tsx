@@ -17,9 +17,11 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
 
   const isDeliveryCompleted = ext.type === 'delivery_completed';
   const isSelfPickupOrder = order.redeemMethod === 'self_order';
+  const isDeliveryOrder = order.redeemMethod === 'delivery';
   const hasPickupCode = !!ext.pickupCode;
   const isPickupCompleted = (isSelfPickupOrder && hasPickupCode) ||
     ext.type === 'pickup_completed';
+  const isDeliveryProgress = isDeliveryOrder && ext.type === 'progress';
 
   const getPickupSummaryText = () => {
     if (ext.summary) {
@@ -82,6 +84,69 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
 
     return steps;
   };
+
+  const getDeliverySummaryText = () => {
+    if (ext.summary) {
+      return ext.summary;
+    }
+    const orderStatus = order.orderStatus;
+    if (orderStatus === 'pending_accept') return '等待商家接单';
+    if (orderStatus === 'preparing') return '商家备餐中';
+    if (orderStatus === 'waiting_pickup') return '等待骑手取餐';
+    if (orderStatus === 'delivering') return '骑手配送中';
+    if (orderStatus === 'completed' || orderStatus === 'picked_up') return '已送达';
+    return '';
+  };
+
+  const getDeliveryProgressSteps = () => {
+    type StepState = 'done' | 'active' | 'pending' | 'error';
+    const steps: Array<{ label: string; state: StepState; time: string }> = [
+      { label: '下单成功', state: 'done', time: '' },
+      { label: '商家已接单', state: 'pending', time: '' },
+      { label: '备餐中', state: 'pending', time: '' },
+      { label: '配送中', state: 'pending', time: '' },
+      { label: '已送达', state: 'pending', time: '' },
+    ];
+
+    const status = order.orderStatus;
+
+    if (status === 'pending_accept') {
+      steps[0].state = 'done';
+      steps[1].state = 'active';
+    } else if (status === 'preparing') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'active';
+    } else if (status === 'waiting_pickup') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'done';
+      steps[3].state = 'active';
+    } else if (status === 'delivering') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'done';
+      steps[3].state = 'done';
+      steps[4].state = 'active';
+    } else if (status === 'completed' || status === 'picked_up') {
+      steps[0].state = 'done';
+      steps[1].state = 'done';
+      steps[2].state = 'done';
+      steps[3].state = 'done';
+      steps[4].state = 'done';
+    }
+
+    if (ext.steps && ext.steps.length > 0) {
+      ext.steps.forEach((s, i) => {
+        if (steps[i] && s.time) {
+          steps[i].time = s.time;
+        }
+      });
+    }
+
+    return steps;
+  };
+
   const isExpanded = expanded === order.id;
 
   const renderProgressIcon = () => {
@@ -230,7 +295,8 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
           <button
             className="oc-rider-phone-btn"
             title="联系骑手"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               window.location.href = `tel:${ext.riderInfo!.phone}`;
             }}
           >
@@ -248,7 +314,10 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
       {isDeliveryCompleted ? (
         <div
           className="oc-delivery-completed"
-          onClick={() => setExpanded(isExpanded ? null : order.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(isExpanded ? null : order.id);
+          }}
         >
           <div className="oc-delivery-summary">
             <span className="oc-delivery-summary-text">{ext.summary}</span>
@@ -275,7 +344,10 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
       ) : isPickupCompleted ? (
         <div
           className={`oc-pickup-completed ${isExpanded ? 'expanded' : 'collapsed'}`}
-          onClick={() => setExpanded(isExpanded ? null : order.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(isExpanded ? null : order.id);
+          }}
         >
           <div className="oc-pickup-summary">
             <div className="oc-pickup-summary-left">
@@ -317,6 +389,69 @@ export const OrderCardExtension: React.FC<OrderCardExtensionProps> = ({ order, d
               </div>
               {ext.info && (
                 <div className="oc-pickup-info">
+                  {ext.info.map((item, i) => (
+                    <div key={i} className="oc-info-item">
+                      <span className="oc-info-label">{item.label}</span>
+                      <span className="oc-info-value">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : isDeliveryProgress ? (
+        <div
+          className={`oc-delivery-progress ${isExpanded ? 'expanded' : 'collapsed'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(isExpanded ? null : order.id);
+          }}
+        >
+          <div className="oc-delivery-progress-summary">
+            <div className="oc-delivery-progress-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="5.5" cy="17.5" r="2.5"/>
+                <circle cx="18.5" cy="17.5" r="2.5"/>
+                <path d="M15 17.5h-5V14h-3l3-7h4l1.5 5H18v4.5z"/>
+                <path d="M8 10h4"/>
+              </svg>
+            </div>
+            <div className="oc-delivery-progress-text">
+              {getDeliverySummaryText()}
+            </div>
+            {ext.estimatedTime && (
+              <span className="oc-delivery-progress-estimate orange">
+                {ext.estimatedTime}
+              </span>
+            )}
+            <span className="oc-delivery-progress-arrow">
+              <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+          </div>
+          {isExpanded && (
+            <div className="oc-delivery-progress-detail">
+              <div className="oc-progress-header">
+                <span className="oc-progress-title">
+                  {renderProgressIcon()}
+                  配送进度
+                </span>
+              </div>
+              <div className="oc-progress-steps">
+                {getDeliveryProgressSteps().map((step, i) => (
+                  <div key={i} className={`oc-step ${step.state}`}>
+                    <div className="oc-step-dot"></div>
+                    <div className="oc-step-label">{step.label}</div>
+                    {step.time && <div className="oc-step-time">{step.time}</div>}
+                    {i < 4 && <div className="oc-step-line"></div>}
+                  </div>
+                ))}
+              </div>
+              {renderRiderInfo()}
+              {ext.info && (
+                <div className="oc-delivery-info">
                   {ext.info.map((item, i) => (
                     <div key={i} className="oc-info-item">
                       <span className="oc-info-label">{item.label}</span>

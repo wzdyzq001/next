@@ -135,6 +135,135 @@ function buildExtension(order: OrderData): OrderCardData['extension'] {
     };
   }
 
+  const isDeliveryOrder = order.redeemMethod === 'delivery' || order.foodSubOrder?.type === 'delivery';
+  if (isDeliveryOrder) {
+    let deliveryStatus: 'pending_accept' | 'preparing' | 'waiting_pickup' | 'delivering' | 'completed' | null = null;
+
+    if (order.foodSubOrder?.status) {
+      const subStatus = order.foodSubOrder.status;
+      if (subStatus === 'merchant_pending') {
+        deliveryStatus = 'pending_accept';
+      } else if (subStatus === 'merchant_making') {
+        deliveryStatus = 'preparing';
+      } else if (subStatus === 'ready_for_pickup' || subStatus === 'rider_assigned' || subStatus === 'rider_arrived_store') {
+        deliveryStatus = 'waiting_pickup';
+      } else if (subStatus === 'delivering' || subStatus === 'picked') {
+        deliveryStatus = 'delivering';
+      } else if (subStatus === 'delivered') {
+        deliveryStatus = 'completed';
+      }
+    } else {
+      if (status === 'completed') {
+        deliveryStatus = 'completed';
+      } else if (status === 'in_delivery') {
+        deliveryStatus = 'delivering';
+      } else if (status === 'confirmed') {
+        deliveryStatus = 'preparing';
+      } else if (status === 'pending_use') {
+        deliveryStatus = 'waiting_pickup';
+      }
+    }
+
+    if (deliveryStatus) {
+      let summary = '';
+      let estimatedTime = order.foodSubOrder?.estimatedArrival || order.deliveryEta || order.estimatedArrival;
+      const info: Array<{ label: string; value: string }> = [];
+      let riderInfo: { name: string; phone?: string } | undefined;
+
+      if (deliveryStatus === 'pending_accept') {
+        summary = '等待商家接单';
+        if (!estimatedTime) estimatedTime = '预计2分钟内接单';
+      } else if (deliveryStatus === 'preparing') {
+        summary = '商家正在备餐';
+        if (!estimatedTime) estimatedTime = '约15分钟';
+      } else if (deliveryStatus === 'waiting_pickup') {
+        summary = '骑手即将到店取餐';
+        if (!estimatedTime) estimatedTime = '约20分钟送达';
+      } else if (deliveryStatus === 'delivering') {
+        summary = '骑手正在配送中';
+        if (!estimatedTime) estimatedTime = '约20分钟送达';
+      } else if (deliveryStatus === 'completed') {
+        summary = '已送达，祝您用餐愉快';
+      }
+
+      if ((deliveryStatus === 'delivering' || deliveryStatus === 'waiting_pickup') && order.foodSubOrder?.rider) {
+        riderInfo = {
+          name: order.foodSubOrder.rider.name,
+          phone: order.foodSubOrder.rider.phone,
+        };
+      }
+
+      if (estimatedTime && deliveryStatus !== 'completed') {
+        info.push({ label: '预计送达', value: estimatedTime });
+      }
+      if (order.foodSubOrder?.receiverAddress) {
+        info.push({ label: '收货地址', value: order.foodSubOrder.receiverAddress });
+      }
+      if (order.store) {
+        info.push({ label: '商家', value: order.store });
+      }
+
+      const steps: Array<{ label: string; state: 'done' | 'active' | 'pending' | 'error'; time?: string }> = [
+        { label: '下单成功', state: 'done' },
+        { label: '商家已接单', state: 'pending' },
+        { label: '备餐中', state: 'pending' },
+        { label: '配送中', state: 'pending' },
+        { label: '已送达', state: 'pending' },
+      ];
+
+      if (deliveryStatus === 'pending_accept') {
+        steps[0].state = 'done';
+        steps[1].state = 'active';
+      } else if (deliveryStatus === 'preparing') {
+        steps[0].state = 'done';
+        steps[1].state = 'done';
+        steps[2].state = 'active';
+      } else if (deliveryStatus === 'waiting_pickup') {
+        steps[0].state = 'done';
+        steps[1].state = 'done';
+        steps[2].state = 'done';
+        steps[3].state = 'active';
+      } else if (deliveryStatus === 'delivering') {
+        steps[0].state = 'done';
+        steps[1].state = 'done';
+        steps[2].state = 'done';
+        steps[3].state = 'active';
+      } else if (deliveryStatus === 'completed') {
+        steps[0].state = 'done';
+        steps[1].state = 'done';
+        steps[2].state = 'done';
+        steps[3].state = 'done';
+        steps[4].state = 'done';
+      }
+
+      if (deliveryStatus === 'completed') {
+        if (order.foodSubOrder?.deliveredAt) {
+          info.unshift({ label: '送达时间', value: order.foodSubOrder.deliveredAt });
+        }
+        if (order.foodSubOrder?.rider?.name) {
+          info.push({ label: '配送骑手', value: order.foodSubOrder.rider.name });
+        }
+        return {
+          type: 'delivery_completed',
+          title: '配送信息',
+          summary,
+          steps,
+          info: info.length > 0 ? info : undefined,
+        };
+      }
+
+      return {
+        type: 'progress',
+        title: '配送进度',
+        summary,
+        estimatedTime,
+        steps,
+        riderInfo,
+        info: info.length > 0 ? info : undefined,
+      };
+    }
+  }
+
   if (pickupCode && (status === 'pending_use' || status === 'in_delivery' || status === 'confirmed' || status === 'completed')) {
     const isPreparing = status === 'confirmed';
     const isWaitingPickup = status === 'pending_use';

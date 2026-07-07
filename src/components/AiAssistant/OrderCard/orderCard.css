@@ -668,6 +668,124 @@
   text-align: left;
 }
 
+/* 配送履约中折叠 */
+.oc-delivery-progress {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+  border-radius: 8px;
+}
+
+.oc-delivery-progress:hover {
+  background: #f7f8fa;
+}
+
+.oc-delivery-progress:active {
+  background: #f0f1f2;
+}
+
+.oc-delivery-progress-summary {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.oc-delivery-progress-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff2e8;
+  color: #ff7d00;
+  flex-shrink: 0;
+}
+
+.oc-delivery-progress-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.oc-delivery-progress-text {
+  flex: 1;
+  font-size: 13px;
+  color: #1f2329;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.oc-delivery-progress-estimate {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.oc-delivery-progress-estimate.orange {
+  background: #fff2e8;
+  color: #ff7d00;
+}
+
+.oc-delivery-progress-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #86909c;
+  flex-shrink: 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.oc-delivery-progress:hover .oc-delivery-progress-arrow {
+  background: #e5e6eb;
+  color: #4e5969;
+}
+
+.oc-delivery-progress:active .oc-delivery-progress-arrow {
+  transform: scale(0.9);
+  background: #d7d8dc;
+}
+
+.oc-delivery-progress.expanded .oc-delivery-progress-arrow {
+  transform: rotate(180deg);
+}
+
+.oc-delivery-progress.expanded:hover .oc-delivery-progress-arrow {
+  transform: rotate(180deg);
+  background: #e5e6eb;
+  color: #4e5969;
+}
+
+.oc-delivery-progress.expanded:active .oc-delivery-progress-arrow {
+  transform: rotate(180deg) scale(0.9);
+}
+
+.oc-delivery-progress-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+  padding: 10px 12px 12px;
+  border-top: 1px solid #f2f3f5;
+}
+
+.oc-delivery-progress-detail .oc-progress-header {
+  margin-bottom: 12px;
+}
+
 /* 自提取餐码简化 */
 .oc-pickup-simple {
   display: flex;
@@ -1154,6 +1272,7 @@
 .oc-compact-card {
   display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 10px 12px;
   background: #ffffff;
@@ -1261,6 +1380,8 @@
   display: flex;
   align-items: baseline;
   gap: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .oc-compact-price .oc-price-symbol {
@@ -1318,4 +1439,27 @@
 
 .oc-compact-action-btn:active {
   background: #e5e6eb;
+}
+
+.oc-compact-extension {
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #f2f3f5;
+}
+
+.oc-compact-extension .oc-card-extension {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  border-top: none;
+}
+
+.oc-compact-bottom {
+  min-width: 0;
+}
+
+.oc-compact-code-row {
+  min-width: 0;
 }

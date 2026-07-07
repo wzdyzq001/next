@@ -417,13 +417,14 @@ const ORDER_FOOD_DELIVERY_PENDING_ACCEPT: OrderCardData = {
   extension: {
     type: 'progress',
     title: '配送进度',
-    estimatedTime: '预计送达时间计算中',
+    summary: '等待商家接单',
+    estimatedTime: '预计2分钟内接单',
     steps: [
-      { label: '已下单', state: 'done', time: '15:00' },
-      { label: '待商家接单', state: 'active', time: '确认中' },
-      { label: '待骑手取餐', state: 'pending', time: '--' },
-      { label: '配送中', state: 'pending', time: '--' },
-      { label: '已送达', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '15:00' },
+      { label: '商家已接单', state: 'active', time: '确认中' },
+      { label: '备餐中', state: 'pending' },
+      { label: '配送中', state: 'pending' },
+      { label: '已送达', state: 'pending' },
     ],
   },
   actions: [
@@ -455,13 +456,14 @@ const ORDER_FOOD_DELIVERY_PREPARING: OrderCardData = {
   extension: {
     type: 'progress',
     title: '配送进度',
+    summary: '商家正在备餐',
     estimatedTime: '预计 15:40 送达',
     steps: [
-      { label: '已下单', state: 'done', time: '15:00' },
-      { label: '商家备餐中', state: 'active', time: '制作中' },
-      { label: '待骑手取餐', state: 'pending', time: '--' },
-      { label: '配送中', state: 'pending', time: '--' },
-      { label: '已送达', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '15:00' },
+      { label: '商家已接单', state: 'done', time: '15:02' },
+      { label: '备餐中', state: 'active', time: '制作中' },
+      { label: '配送中', state: 'pending' },
+      { label: '已送达', state: 'pending' },
     ],
     info: [
       { label: '预计出餐时间', value: '15:15' },
@@ -496,13 +498,14 @@ const ORDER_FOOD_DELIVERY_WAITING_RIDER: OrderCardData = {
   extension: {
     type: 'progress',
     title: '配送进度',
+    summary: '骑手即将到店取餐',
     estimatedTime: '预计 15:40 送达',
     steps: [
-      { label: '已下单', state: 'done', time: '15:00' },
-      { label: '商家已出餐', state: 'done', time: '15:15' },
-      { label: '待骑手取餐', state: 'active', time: '等待中' },
-      { label: '配送中', state: 'pending', time: '--' },
-      { label: '已送达', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '15:00' },
+      { label: '商家已接单', state: 'done', time: '15:02' },
+      { label: '备餐中', state: 'done', time: '15:15' },
+      { label: '配送中', state: 'active', time: '待取餐' },
+      { label: '已送达', state: 'pending' },
     ],
     info: [
       { label: '骑手状态', value: '等待骑手接单' },
@@ -537,12 +540,14 @@ const ORDER_FOOD_DELIVERING: OrderCardData = {
   extension: {
     type: 'progress',
     title: '配送进度',
+    summary: '骑手正在配送中',
     estimatedTime: '预计 15:20 送达',
     steps: [
-      { label: '已下单', state: 'done', time: '14:50' },
-      { label: '商家已出餐', state: 'done', time: '15:00' },
-      { label: '骑手配送中', state: 'active', time: '距您1.2km' },
-      { label: '已送达', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '14:50' },
+      { label: '商家已接单', state: 'done', time: '14:52' },
+      { label: '备餐中', state: 'done', time: '15:00' },
+      { label: '配送中', state: 'done', time: '15:05' },
+      { label: '已送达', state: 'active', time: '距您1.2km' },
     ],
     riderInfo: {
       name: '张师傅',
@@ -680,13 +685,18 @@ const ORDER_FOOD_COMPLETED_DELIVERY: OrderCardData = {
   statusColor: '#10b981',
   extension: {
     type: 'delivery_completed',
-    title: '配送完成',
-    summary: '骑手已送达，请确认收货',
+    title: '配送信息',
+    summary: '已送达，祝您用餐愉快',
     steps: [
-      { label: '已下单', state: 'done', time: '12:00' },
-      { label: '商家已出餐', state: 'done', time: '12:20' },
-      { label: '骑手配送中', state: 'done', time: '12:25' },
+      { label: '下单成功', state: 'done', time: '12:00' },
+      { label: '商家已接单', state: 'done', time: '12:02' },
+      { label: '备餐中', state: 'done', time: '12:20' },
+      { label: '配送中', state: 'done', time: '12:25' },
       { label: '已送达', state: 'done', time: '12:45' },
+    ],
+    info: [
+      { label: '送达时间', value: '12:45' },
+      { label: '配送骑手', value: '张师傅' },
     ],
   },
   actions: [
@@ -718,12 +728,14 @@ const ORDER_FOOD_DELIVERING_2: OrderCardData = {
   extension: {
     type: 'progress',
     title: '配送进度',
+    summary: '骑手正在配送中',
     estimatedTime: '预计 15:35 送达',
     steps: [
-      { label: '已下单', state: 'done', time: '14:55' },
-      { label: '商家已出餐', state: 'done', time: '15:05' },
-      { label: '骑手配送中', state: 'active', time: '距您0.8km' },
-      { label: '已送达', state: 'pending', time: '--' },
+      { label: '下单成功', state: 'done', time: '14:55' },
+      { label: '商家已接单', state: 'done', time: '14:57' },
+      { label: '备餐中', state: 'done', time: '15:05' },
+      { label: '配送中', state: 'done', time: '15:10' },
+      { label: '已送达', state: 'active', time: '距您0.8km' },
     ],
     riderInfo: {
       name: '李师傅',

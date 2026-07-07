@@ -10,6 +10,11 @@ interface OrderCardActionsProps {
 export const OrderCardActions: React.FC<OrderCardActionsProps> = ({ order, onActionClick }) => {
   const hasPaymentCountdown = !!order.paymentCountdown || order.extension?.type === 'payment_countdown';
   const hasPickupCode = !!(order.extension?.pickupCode && (order.extension.type === 'pickup_code' || order.extension.type === 'pickup_completed'));
+  const isDelivery = order.redeemMethod === 'delivery';
+
+  if (isDelivery) {
+    return null;
+  }
 
   const filteredActions = order.actions.filter(action => {
     if (hasPickupCode && action.label.includes('查看取餐码')) {

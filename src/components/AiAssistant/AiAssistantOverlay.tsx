@@ -264,13 +264,12 @@ const AiAssistantOverlay: React.FC = () => {
           break;
         case 'delivery':
           sendMessage('查询配送进度');
-          showToast('功能还有一些问题待优化，可以先体验～');
           break;
         default:
           break;
       }
     },
-    [sendMessage, showToast]
+    [sendMessage]
   );
 
   const getCurrentHeight = useCallback(() => {
@@ -1055,7 +1054,7 @@ const AiAssistantOverlay: React.FC = () => {
               取餐码
             </button>
             <button
-              className="ai-footer-quick-action-btn ai-footer-quick-action-btn-disabled"
+              className="ai-footer-quick-action-btn"
               onClick={() => handleQuickActionClick({ id: 'qa-delivery', label: '配送进度', type: 'delivery' })}
             >
               配送进度

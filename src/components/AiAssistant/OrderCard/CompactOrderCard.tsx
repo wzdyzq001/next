@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { OrderCardData } from './orderCardTypes';
+import { OrderCardExtension } from './OrderCardExtension';
 import './orderCard.css';
 
 interface CompactOrderCardProps {
@@ -45,6 +46,7 @@ export const CompactOrderCard: React.FC<CompactOrderCardProps> = ({
 
   const hasPickupCode = !!order.extension?.pickupCode;
   const hasStoreInfo = !!order.storeName;
+  const isDelivery = order.redeemMethod === 'delivery';
 
   return (
     <div className="oc-compact-card" onClick={onClick}>
@@ -84,7 +86,12 @@ export const CompactOrderCard: React.FC<CompactOrderCardProps> = ({
           </div>
         )}
       </div>
-      {actionLabel && onPrimaryAction && (
+      {order.extension?.type !== 'payment_countdown' && order.extension && (
+        <div className="oc-compact-extension">
+          <OrderCardExtension order={order} />
+        </div>
+      )}
+      {actionLabel && onPrimaryAction && !isDelivery && (
         <button
           className="oc-compact-action-btn"
           onClick={(e) => {
