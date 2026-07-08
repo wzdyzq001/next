@@ -35,10 +35,61 @@ function isReminderTimeInFuture(ctx: ReachMatchContext): boolean {
   return r.remindAt > ctx.now;
 }
 
+function parseArrivalTime(arrivalTime: string): number | null {
+  if (!arrivalTime) return null;
+  const parts = arrivalTime.split(' ');
+  if (parts.length < 2) return null;
+
+  const datePart = parts[0];
+  const timePart = parts[1];
+
+  let month = 0;
+  let day = 0;
+
+  const cnMatch = datePart.match(/(\d{1,2})月(\d{1,2})日/);
+  if (cnMatch) {
+    month = parseInt(cnMatch[1], 10) - 1;
+    day = parseInt(cnMatch[2], 10);
+  } else {
+    const isoMatch = datePart.match(/\d{4}-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      month = parseInt(isoMatch[1], 10) - 1;
+      day = parseInt(isoMatch[2], 10);
+    } else {
+      return null;
+    }
+  }
+
+  const timeMatch = timePart.match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) return null;
+
+  const hour = parseInt(timeMatch[1], 10);
+  const min = parseInt(timeMatch[2], 10);
+
+  const now = new Date();
+  const date = new Date(now.getFullYear(), month, day, hour, min, 0, 0);
+
+  if (month < now.getMonth()) {
+    date.setFullYear(now.getFullYear() + 1);
+  }
+
+  return date.getTime();
+}
+
+function isReservationInFuture(ctx: ReachMatchContext): boolean {
+  const r = ctx.reservation;
+  if (!r) return true;
+  if (r.acceptStatus !== 'accepted') return true;
+  const arrivalTimestamp = parseArrivalTime(r.arrivalTime);
+  if (arrivalTimestamp === null) return true;
+  return arrivalTimestamp > ctx.now;
+}
+
 export function usageReminderMatch(ctx: ReachMatchContext): boolean {
   if (!isUnusedOrder(ctx)) return false;
   if (!hasActiveUsageReminder(ctx)) return false;
   if (!isReminderTimeInFuture(ctx)) return false;
+  if (!isReservationInFuture(ctx)) return false;
   return true;
 }
 
@@ -89,7 +140,7 @@ export function getUsageReminderBarText(ctx: ReachMatchContext): string {
   if (dayDiff === 1) {
     return `明天${timeStr}提醒使用`;
   }
-  return `${month}月${day}日(${dayDiff}天)后${timeStr}提醒使用`;
+  return `${month}月${day}日(${dayDiff}天后)${timeStr}提醒使用`;
 }
 
 export const USAGE_REMINDER_BAR_CONFIG_TEMPLATE: Omit<ReachConfig, 'reachId'> = {

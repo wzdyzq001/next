@@ -2,6 +2,7 @@ import type { NluContext, NluResponse } from '../types';
 import { createQuickReply } from '../utils';
 import { extractDate, extractTime, parseDateToTimestamp } from '../entityExtractor';
 import { canOrderSetReminder } from './reminderOrderValidator';
+import { getReminderBeforeReservation, validateReminderTimeAgainstReservation } from '../reservationReminderUtils';
 import { MOCK_REMINDER } from '../scenarioData';
 import type { ReminderStep } from '../types';
 import { setReminder as saveReminderToStorage } from '../../../../redeemReminder';
@@ -235,8 +236,17 @@ function startValidatingOrder(orderCard: any, context: NluContext): NluResponse 
   const orderId = orderCard.id || '';
   const productName = orderCard.productName || '';
   const validDate = orderCard.validDate || '';
+  const reservationTimestamp = validation.reservationTimestamp;
+  const isFromReservation = !!reservationTimestamp;
 
-  return startCheckingExisting(orderId, productName, validDate, context);
+  const data = (dialogState.data || {}) as Record<string, any>;
+  const newData = {
+    ...data,
+    reservationTimestamp,
+    isFromReservation,
+  };
+
+  return startCheckingExisting(orderId, productName, validDate, context, newData);
 }
 
 function handleValidatingOrder(_message: string, context: NluContext): NluResponse {
@@ -251,12 +261,14 @@ function startCheckingExisting(
   orderId: string,
   productName: string,
   validDate: string,
-  context: NluContext
+  context: NluContext,
+  extraData?: Record<string, any>
 ): NluResponse {
   const { dialogState } = context;
   const data = (dialogState.data || {}) as Record<string, any>;
+  const mergedData = { ...data, ...extraData };
 
-  const existingReminder = (data as any).existingReminder;
+  const existingReminder = (mergedData as any).existingReminder;
   if (existingReminder && existingReminder.status === 'active') {
     const { dateStr, timeStr } = formatReminderDateTime(existingReminder.remindAt);
     return {
@@ -277,7 +289,7 @@ function startCheckingExisting(
         currentStep: 'checking_existing',
         reminderStep: 'checking_existing',
         data: {
-          ...data,
+          ...mergedData,
           orderId,
           productName,
           validDate,
@@ -287,7 +299,7 @@ function startCheckingExisting(
     };
   }
 
-  return startCollectingDateTime(orderId, productName, validDate, context, false);
+  return startCollectingDateTime(orderId, productName, validDate, context, false, undefined, undefined, extraData);
 }
 
 function handleCheckingExisting(message: string, context: NluContext): NluResponse {
@@ -348,6 +360,13 @@ function handleCheckingExisting(message: string, context: NluContext): NluRespon
   };
 }
 
+function formatShortDate(timestamp: number): string {
+  const d = new Date(timestamp);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${month}月${day}日`;
+}
+
 function startCollectingDateTime(
   orderId: string,
   productName: string,
@@ -355,30 +374,53 @@ function startCollectingDateTime(
   context: NluContext,
   isModifying: boolean,
   prefillDate?: string,
-  prefillTime?: string
+  prefillTime?: string,
+  extraData?: Record<string, any>
 ): NluResponse {
   const { dialogState } = context;
   const data = (dialogState.data || {}) as Record<string, any>;
+  const mergedData = { ...data, ...extraData };
   const now = Date.now();
+
+  const reservationTimestamp = mergedData.reservationTimestamp as number | undefined;
+  const isFromReservation = !!reservationTimestamp;
 
   const quickDateOptions = buildQuickDateOptions(validDate, now);
   const quickReplies = quickDateOptions.map((opt, i) =>
     createQuickReply(`qr-date-${i + 1}`, opt)
   );
 
-  const newData = {
-    ...data,
+  const newData: Record<string, any> = {
+    ...mergedData,
     orderId,
     productName,
     validDate,
     isModifying,
+    isDefaultTimeUsed: false,
   };
 
-  if (prefillDate) {
-    (newData as any).date = prefillDate;
-  }
-  if (prefillTime) {
-    (newData as any).time = prefillTime;
+  let content = '请告诉我提醒日期、时间';
+
+  if (isFromReservation && reservationTimestamp && !prefillDate && !prefillTime) {
+    const defaultRemindAt = getReminderBeforeReservation(reservationTimestamp);
+    const reservationShortDate = formatShortDate(reservationTimestamp);
+    const reservationTimeStr = formatReminderTime(reservationTimestamp);
+    const reminderShortDate = formatShortDate(defaultRemindAt);
+    const reminderTimeStr = formatReminderTime(defaultRemindAt);
+
+    const d = new Date(defaultRemindAt);
+    newData.date = `${d.getMonth() + 1}月${d.getDate()}日`;
+    newData.time = formatReminderTime(defaultRemindAt);
+    newData.isDefaultTimeUsed = true;
+
+    content = `您已有 ${reservationShortDate} ${reservationTimeStr} 的预约，推荐设置预约前 1 小时（${reminderShortDate} ${reminderTimeStr}）的使用提醒，也可以告诉我其他时间～`;
+  } else if (prefillDate || prefillTime) {
+    if (prefillDate) {
+      newData.date = prefillDate;
+    }
+    if (prefillTime) {
+      newData.time = prefillTime;
+    }
   }
 
   return {
@@ -386,7 +428,7 @@ function startCollectingDateTime(
       {
         role: 'assistant',
         contentType: 'text',
-        content: '请告诉我提醒日期、时间',
+        content,
         quickReplies,
       },
     ],
@@ -408,24 +450,30 @@ function handleCollectingDateTime(message: string, context: NluContext): NluResp
   const productName = data.productName || '';
   const validDate = data.validDate || '';
   const isModifying = !!data.isModifying;
+  const reservationTimestamp = data.reservationTimestamp as number | undefined;
+  const isFromReservation = !!reservationTimestamp;
 
   let date = data.date || '';
   let time = data.time || '';
+  let isDefaultTimeUsed = !!data.isDefaultTimeUsed;
 
   const dateEntity = extractDate(message);
   const timeEntity = extractTime(message);
 
   if (dateEntity && dateEntity.value) {
     date = dateEntity.value;
+    isDefaultTimeUsed = false;
   }
   if (timeEntity && timeEntity.value) {
     time = timeEntity.value;
+    isDefaultTimeUsed = false;
   }
 
   const newData = {
     ...data,
     date,
     time,
+    isDefaultTimeUsed,
   };
 
   if (!date && !time) {
@@ -510,6 +558,33 @@ function handleCollectingDateTime(message: string, context: NluContext): NluResp
     };
   }
 
+  let reservationWarning: string | undefined;
+  if (isFromReservation && reservationTimestamp) {
+    const reservationValidation = validateReminderTimeAgainstReservation(validation.remindAt!, reservationTimestamp);
+    if (!reservationValidation.valid) {
+      return {
+        messages: [
+          {
+            role: 'assistant',
+            contentType: 'text',
+            content: reservationValidation.error || '提醒时间无效，请重新输入',
+          },
+        ],
+        newDialogState: {
+          ...dialogState,
+          currentIntent: 'reminder',
+          currentStep: 'collecting_datetime',
+          reminderStep: 'collecting_datetime',
+          data: {
+            ...newData,
+            dateTimestamp: validation.dateTimestamp,
+          },
+        },
+      };
+    }
+    reservationWarning = reservationValidation.warning;
+  }
+
   return startConfirming(
     orderId,
     productName,
@@ -519,7 +594,11 @@ function handleCollectingDateTime(message: string, context: NluContext): NluResp
     validation.dateTimestamp!,
     validation.remindAt!,
     isModifying,
-    context
+    context,
+    {
+      reservationWarning,
+      isDefaultTimeUsed,
+    }
   );
 }
 
@@ -532,20 +611,37 @@ function startConfirming(
   dateTimestamp: number,
   remindAt: number,
   isModifying: boolean,
-  context: NluContext
+  context: NluContext,
+  extraData?: Record<string, any>
 ): NluResponse {
   const { dialogState } = context;
   const data = (dialogState.data || {}) as Record<string, any>;
+  const mergedData = { ...data, ...extraData };
+
+  const reservationTimestamp = mergedData.reservationTimestamp as number | undefined;
+  const isFromReservation = !!reservationTimestamp;
+  const isDefaultTimeUsed = !!mergedData.isDefaultTimeUsed;
+  const reservationWarning = mergedData.reservationWarning as string | undefined;
 
   const dateStr = formatReminderDate(dateTimestamp);
   const timeStr = formatReminderTime(remindAt);
+
+  let content = `确认设置 <strong>${dateStr}</strong> <strong>${timeStr}</strong> 的使用提醒吗？`;
+
+  if (isFromReservation && isDefaultTimeUsed) {
+    content = `确认设置 <strong>${dateStr}</strong> <strong>${timeStr}</strong>（预约前1小时）的使用提醒吗？`;
+  }
+
+  if (reservationWarning) {
+    content = reservationWarning + '\n' + content;
+  }
 
   return {
     messages: [
       {
         role: 'assistant',
         contentType: 'text',
-        content: `确认设置 <strong>${dateStr}</strong> <strong>${timeStr}</strong> 的使用提醒吗？`,
+        content,
         quickReplies: [
           createQuickReply('qr-cancel', '取消'),
           createQuickReply('qr-confirm', '确认设置'),
@@ -558,7 +654,7 @@ function startConfirming(
       currentStep: 'confirming',
       reminderStep: 'confirming',
       data: {
-        ...data,
+        ...mergedData,
         orderId,
         productName,
         validDate,
@@ -582,6 +678,8 @@ function handleConfirming(message: string, context: NluContext): NluResponse {
   const date = data.date || '';
   const time = data.time || '';
   const isModifying = !!data.isModifying;
+  const reservationTimestamp = data.reservationTimestamp as number | undefined;
+  const isFromReservation = !!reservationTimestamp;
 
   const isYes = isPositiveAnswer(message) || message === 'qr-confirm';
   const isNo = isNegativeAnswer(message) || message === 'qr-cancel';
@@ -647,6 +745,34 @@ function handleConfirming(message: string, context: NluContext): NluResponse {
       };
     }
 
+    let reservationWarning: string | undefined;
+    if (isFromReservation && reservationTimestamp) {
+      const reservationValidation = validateReminderTimeAgainstReservation(validation.remindAt!, reservationTimestamp);
+      if (!reservationValidation.valid) {
+        return {
+          messages: [
+            {
+              role: 'assistant',
+              contentType: 'text',
+              content: reservationValidation.error || '提醒时间无效，请重新输入',
+            },
+          ],
+          newDialogState: {
+            ...dialogState,
+            currentIntent: 'reminder',
+            currentStep: 'confirming',
+            reminderStep: 'confirming',
+            data: {
+              ...data,
+              date: newDate,
+              time: newTime,
+            },
+          },
+        };
+      }
+      reservationWarning = reservationValidation.warning;
+    }
+
     return startConfirming(
       orderId,
       productName,
@@ -656,7 +782,11 @@ function handleConfirming(message: string, context: NluContext): NluResponse {
       validation.dateTimestamp!,
       validation.remindAt!,
       isModifying,
-      context
+      context,
+      {
+        reservationWarning,
+        isDefaultTimeUsed: false,
+      }
     );
   }
 
@@ -688,10 +818,17 @@ function completeReminder(context: NluContext): NluResponse {
   const remindAt = data.remindAt || Date.now();
   const productName = data.productName || orderCard?.productName || '';
   const validDate = data.validDate || orderCard?.validDate || '';
+  const isFromReservation = !!data.isFromReservation;
+  const isDefaultTimeUsed = !!data.isDefaultTimeUsed;
+
+  let source: 'auto_from_reservation' | 'user_custom' | undefined;
+  if (isFromReservation) {
+    source = isDefaultTimeUsed ? 'auto_from_reservation' : 'user_custom';
+  }
 
   let savedReminder;
   try {
-    savedReminder = saveReminderToStorage(orderId, remindAt, { productName, validDate });
+    savedReminder = saveReminderToStorage(orderId, remindAt, { productName, validDate, source });
   } catch (e) {
     console.warn('[reminderHandler] saveReminderToStorage failed:', e);
     savedReminder = {
@@ -703,6 +840,7 @@ function completeReminder(context: NluContext): NluResponse {
       createdAt: Date.now(),
       productName,
       validDate,
+      ...(source ? { source } : {}),
     };
   }
 
@@ -711,7 +849,7 @@ function completeReminder(context: NluContext): NluResponse {
       {
         role: 'assistant',
         contentType: 'text',
-        content: '好的，使用提醒已设置，我会在指定时间提醒您。',
+        content: '好的，使用提醒已设置，我会在指定时间提醒您。如果后续取消预约或预约失败，我会自动帮您取消使用提醒～',
         redeemReminder: savedReminder,
       },
     ],

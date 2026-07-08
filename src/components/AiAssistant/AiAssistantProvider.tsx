@@ -43,11 +43,13 @@ import {
   cancelReminder as cancelReminderStorage,
   setReminder as setReminderStorage,
   getReminderByOrder,
+  updateReminderSource as updateReminderSourceStorage,
 } from '../../redeemReminder';
 import type { OrderListItem } from '../../types';
 import { createReorderFromOriginal } from './OrderCard/orderCardUtils';
 import type { OrderCardData } from './OrderCard/orderCardTypes';
 import type { ReachConfig } from './reach/types';
+import { isFreeReservationOrder } from './nlu/reservationReminderUtils';
 const AiAssistantContext = createContext<AiAssistantContextValue | null>(null);
 
 export const useAiAssistantContext = () => {
@@ -93,6 +95,63 @@ const hasReminderCardInLastN = (messages: ChatMessage[], orderId: string, n: num
   }
   return false;
 };
+
+const QR_CANCEL_REMINDER_AFTER_RESERVATION_CANCEL = 'qr-cancel-reminder-after-reservation-cancel';
+const QR_KEEP_REMINDER_AFTER_RESERVATION_CANCEL = 'qr-keep-reminder-after-reservation-cancel';
+const QR_ADJUST_REMINDER_AFTER_REBOOK = 'qr-adjust-reminder-after-rebook';
+const QR_CONFIRM_SET_REMINDER_AFTER_RESERVATION = 'qr-confirm-set-reminder-after-reservation';
+
+function parseArrivalTimeToTimestamp(arrivalTime: string): number | null {
+  if (!arrivalTime) return null;
+  const parts = arrivalTime.split(' ');
+  if (parts.length < 2) return null;
+  const datePart = parts[0];
+  const timePart = parts[1];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  let date: Date | null = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    date = new Date(datePart + 'T00:00:00');
+  } else if (/^\d{1,2}\.\d{1,2}$/.test(datePart)) {
+    const [month, day] = datePart.split('.').map(Number);
+    date = new Date(currentYear, month - 1, day);
+    if (date.getTime() < now.getTime() - 24 * 60 * 60 * 1000) {
+      date.setFullYear(currentYear + 1);
+    }
+  } else if (/^\d{1,2}月\d{1,2}日$/.test(datePart)) {
+    const match = datePart.match(/^(\d{1,2})月(\d{1,2})日$/);
+    if (match) {
+      const month = parseInt(match[1]);
+      const day = parseInt(match[2]);
+      date = new Date(currentYear, month - 1, day);
+      if (date.getTime() < now.getTime() - 24 * 60 * 60 * 1000) {
+        date.setFullYear(currentYear + 1);
+      }
+    }
+  }
+  if (!date || isNaN(date.getTime())) return null;
+  const timeMatch = timePart.match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) return null;
+  const hour = parseInt(timeMatch[1]);
+  const min = parseInt(timeMatch[2]);
+  if (hour < 0 || hour > 23 || min < 0 || min > 59) return null;
+  date.setHours(hour, min, 0, 0);
+  return date.getTime();
+}
+
+function formatShortDate(timestamp: number): string {
+  const d = new Date(timestamp);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${month}月${day}日`;
+}
+
+function formatTime(timestamp: number): string {
+  const d = new Date(timestamp);
+  const hour = String(d.getHours()).padStart(2, '0');
+  const minute = String(d.getMinutes()).padStart(2, '0');
+  return `${hour}:${minute}`;
+}
 
 const loadCollapseState = (): CollapseState => {
   try {
@@ -234,6 +293,7 @@ export const AiAssistantProvider: React.FC<{
   const wsReconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const pendingOrderCardRef = useRef<OrderCardData | null>(null);
+  const lastCheckedReservationRef = useRef<Record<string, { arrivalTime: string; acceptStatus: string; linkageChecked: boolean }>>({});
 
   const addUserMessage = useCallback((text: string): ChatMessage => {
     const msg: ChatMessage = {
@@ -350,12 +410,12 @@ export const AiAssistantProvider: React.FC<{
     }, null);
     if (latestReservationMsg) {
       const isPending = reservation.acceptStatus === 'pending';
-      const toastMsg = isPending ? '已经有进行中的预约单' : '已经有预约成功的订单';
+      const toastMsg = isPending ? '已经有进行中的预约单' : '已经有预约成功的预约单';
       showToast(toastMsg);
       return;
     }
     const isPending = reservation.acceptStatus === 'pending';
-    const alertText = isPending ? '已经有预约进行中' : '已经有预约成功';
+    const alertText = isPending ? '已经有预约进行中' : '已经有预约成功的预约单';
     addAssistantMessage(alertText, { reservationInfo: reservation });
   }, [addAssistantMessage, messages, showToast]);
 
@@ -502,7 +562,7 @@ export const AiAssistantProvider: React.FC<{
 
     switch (cardType) {
       case 'redeem_reminder':
-        addAssistantMessage('好的，使用提醒已设置，我会在指定时间提醒您。');
+        addAssistantMessage('好的，使用提醒已设置，我会在指定时间提醒您。如果后续取消预约或预约失败，我会自动帮您取消使用提醒～');
         break;
       case 'reservation_form':
         addAssistantMessage('预约申请已提交，商家确认后会第一时间通知您。');
@@ -634,6 +694,131 @@ export const AiAssistantProvider: React.FC<{
       contextRef.current.conversationTurns += 1;
       contextRef.current.lastActiveAt = Date.now();
 
+      if (message === QR_CANCEL_REMINDER_AFTER_RESERVATION_CANCEL || message === '取消提醒') {
+        const orderId = currentOrderId || findLastOrderCard()?.id;
+        if (orderId) {
+          cancelReminderStorage(orderId);
+          setMessages((prev) => prev.map((msg) => {
+            if (msg.redeemReminder && msg.redeemReminder.orderId === orderId && msg.redeemReminder.status !== 'canceled') {
+              return {
+                ...msg,
+                content: '使用提醒已取消',
+                redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const },
+              };
+            }
+            return msg;
+          }));
+        }
+        setTimeout(() => {
+          addAssistantMessage('好的，使用提醒已取消。');
+          setIsLoading(false);
+        }, 300);
+        return;
+      }
+
+      if (message === QR_KEEP_REMINDER_AFTER_RESERVATION_CANCEL || message === '保持提醒') {
+        const orderId = currentOrderId || findLastOrderCard()?.id;
+        if (orderId) {
+          updateReminderSourceStorage(orderId, 'user_custom');
+        }
+        setTimeout(() => {
+          addAssistantMessage('好的，提醒保持有效～');
+          setIsLoading(false);
+        }, 300);
+        return;
+      }
+
+      if (message === QR_CONFIRM_SET_REMINDER_AFTER_RESERVATION || message === '确认设置') {
+        const dialogState = (contextRef.current.dialogState || {}) as any;
+        const reminderStep = dialogState.reservationReminderStep;
+        const reminderData = (dialogState.data || {}) as Record<string, any>;
+
+        if (reminderStep === 'confirming_custom' && reminderData.remindAt) {
+          const orderId = reminderData.orderId || currentOrderId || findLastOrderCard()?.id;
+          if (orderId) {
+            const lastOrderCard = findLastOrderCard();
+            const updated = setReminderStorage(orderId, reminderData.remindAt, {
+              productName: reminderData.productName || lastOrderCard?.productName,
+              validDate: formatShortDate(reminderData.remindAt),
+              source: 'user_custom',
+            });
+            addAssistantMessage('', { redeemReminder: updated });
+            contextRef.current.dialogState = {
+              ...dialogState,
+              currentIntent: null,
+              currentStep: 'idle',
+              reservationReminderStep: 'completed',
+            } as any;
+          }
+          setTimeout(() => {
+            addAssistantMessage('好的，使用提醒已设置，我会在指定时间提醒您。如果后续取消预约或预约失败，我会自动帮您取消使用提醒～');
+            setIsLoading(false);
+          }, 200);
+          return;
+        }
+
+        const orderId = currentOrderId || findLastOrderCard()?.id;
+        if (orderId) {
+          const reservation = reservationsByOrder[orderId];
+          if (reservation && reservation.arrivalTime) {
+            const reservationTs = parseArrivalTimeToTimestamp(reservation.arrivalTime);
+            if (reservationTs) {
+              const newRemindAt = reservationTs - 60 * 60 * 1000;
+              const lastOrderCard = findLastOrderCard();
+              const updated = setReminderStorage(orderId, newRemindAt, {
+                productName: reservation.storeName || lastOrderCard?.productName,
+                validDate: formatShortDate(reservationTs),
+                source: 'auto_from_reservation',
+              });
+              addAssistantMessage('', { redeemReminder: updated });
+            }
+          }
+        }
+        setTimeout(() => {
+          addAssistantMessage('好的，使用提醒已设置，我会在指定时间提醒您。如果后续取消预约或预约失败，我会自动帮您取消使用提醒～');
+          setIsLoading(false);
+        }, 200);
+        return;
+      }
+
+      if (message === QR_ADJUST_REMINDER_AFTER_REBOOK || message === '帮我调整') {
+        const orderId = currentOrderId || findLastOrderCard()?.id;
+        if (orderId) {
+          const reservation = reservationsByOrder[orderId];
+          if (reservation && reservation.arrivalTime) {
+            const reservationTs = parseArrivalTimeToTimestamp(reservation.arrivalTime);
+            if (reservationTs) {
+              const newRemindAt = reservationTs - 60 * 60 * 1000;
+              const existing = getReminderByOrder(orderId);
+              const updated = setReminderStorage(orderId, newRemindAt, {
+                productName: existing?.productName,
+                validDate: existing?.validDate,
+                source: 'auto_from_reservation',
+              });
+              setMessages((prev) => prev.map((msg) => {
+                if (msg.redeemReminder && msg.redeemReminder.orderId === orderId) {
+                  return { ...msg, redeemReminder: updated };
+                }
+                return msg;
+              }));
+              const remDate = formatShortDate(newRemindAt);
+              const remTime = formatTime(newRemindAt);
+              addAssistantMessage('', { redeemReminder: updated });
+              setTimeout(() => {
+                addAssistantMessage(`好的，已为您调整提醒时间为${remDate} ${remTime}～`);
+                setIsLoading(false);
+              }, 200);
+              return;
+            }
+          }
+        }
+        setTimeout(() => {
+          addAssistantMessage('好的，已为您调整提醒时间～');
+          setIsLoading(false);
+        }, 300);
+        return;
+      }
+
       if (USE_LOCAL_NLU) {
         try {
           let orderCard: OrderCardData | undefined;
@@ -719,7 +904,7 @@ export const AiAssistantProvider: React.FC<{
         }
       }
     },
-    [degradeLevel, addUserMessage, addAssistantMessage, currentOrderId, findLastOrderCard, sendNluResponse]
+    [degradeLevel, addUserMessage, addAssistantMessage, currentOrderId, findLastOrderCard, sendNluResponse, messages, updateMessageById, reservationsByOrder, sendRedeemReminderWithOrder]
   );
 
   const openAssistant = useCallback(
@@ -1008,6 +1193,47 @@ export const AiAssistantProvider: React.FC<{
         });
       }
 
+      if (orderId) {
+        const reservation = updatedReservations[orderId];
+        const reminder = getReminderByOrder(orderId);
+
+        if (reminder && reminder.status === 'canceled') {
+          const canceledReminder = { ...reminder, status: 'canceled' as const };
+          finalMessages = finalMessages.map((msg) => {
+            if (msg.redeemReminder && msg.redeemReminder.orderId === orderId && msg.redeemReminder.status !== 'canceled') {
+              return { ...msg, redeemReminder: canceledReminder };
+            }
+            return msg;
+          });
+        }
+
+        if (reservation && reservation.acceptStatus === 'canceled' && reminder && reminder.status === 'active') {
+          cancelReminderStorage(orderId);
+          const canceledReminder = { ...reminder, status: 'canceled' as const };
+          finalMessages = finalMessages.map((msg) => {
+            if (msg.redeemReminder && msg.redeemReminder.orderId === orderId) {
+              return { ...msg, redeemReminder: canceledReminder };
+            }
+            return msg;
+          });
+          const hasExistingCancelMsg = finalMessages.some((msg) => {
+            if (msg.role !== 'assistant') return false;
+            const content = msg.content || '';
+            return content.includes('使用提醒已同步取消') ||
+                   content.includes('是否同时取消使用提醒');
+          });
+          if (!hasExistingCancelMsg) {
+            finalMessages = [...finalMessages, {
+              id: genId(),
+              role: 'assistant',
+              contentType: 'text',
+              content: '预约已取消，使用提醒已同步取消，如有需求可重新设置使用提醒～',
+              timestamp: Date.now(),
+            }];
+          }
+        }
+      }
+
       setMessages(finalMessages);
       setReservationsByOrder(updatedReservations);
 
@@ -1161,9 +1387,18 @@ export const AiAssistantProvider: React.FC<{
           contextRef.current.currentOrderId = orderId;
         }
         const existing = orderId ? reservationsByOrder[orderId] : null;
-        if (existing && (existing.acceptStatus === 'pending' || existing.acceptStatus === 'accepted')) {
-          showExistingReservationAlert(existing);
-          return;
+        if (existing) {
+          let isActive = false;
+          if (existing.acceptStatus === 'pending') {
+            isActive = true;
+          } else if (existing.acceptStatus === 'accepted') {
+            const arrivalTs = parseArrivalTimeToTimestamp(existing.arrivalTime);
+            isActive = arrivalTs === null || arrivalTs > Date.now();
+          }
+          if (isActive) {
+            showExistingReservationAlert(existing);
+            return;
+          }
         }
         closeAllSheets();
         setReservationStoreName((action as any).storeName || '预约门店');
@@ -1409,7 +1644,10 @@ export const AiAssistantProvider: React.FC<{
         const existingMsg = messages.reduceRight<ChatMessage | null>((found, msg) => {
           if (found) return found;
           if (msg.reservationInfo && msg.reservationInfo.orderId === currentOrderId) {
-            return msg;
+            const status = msg.reservationInfo.acceptStatus;
+            if (status === 'pending' || status === 'accepted') {
+              return msg;
+            }
           }
           return null;
         }, null);
@@ -1439,7 +1677,168 @@ export const AiAssistantProvider: React.FC<{
     setReservationEditMode('new');
     setEditingReservation(null);
     setRebookFromMessageId(null);
-  }, [addAssistantMessage, updateMessageById, updateReservationStatus, reservationEditMode, rebookFromMessageId, currentOrderId, messages, clearReservationTimers]);
+
+    if (currentOrderId && newReservationInfo.arrivalTime) {
+      const lastOrderCard = findLastOrderCard();
+      const isFree = lastOrderCard ? isFreeReservationOrder(lastOrderCard) : false;
+      if (isFree) {
+        const reminder = getReminderByOrder(currentOrderId);
+        const reservationTs = parseArrivalTimeToTimestamp(newReservationInfo.arrivalTime);
+        if (reservationTs) {
+          const hoursUntilReservation = (reservationTs - Date.now()) / (1000 * 60 * 60);
+          if (hoursUntilReservation < 2) {
+            return;
+          }
+          const defaultRemindAt = reservationTs - 60 * 60 * 1000;
+          const remDate = formatShortDate(defaultRemindAt);
+          const remTime = formatTime(defaultRemindAt);
+
+          if (currentOrderId) {
+            lastCheckedReservationRef.current[currentOrderId] = {
+              arrivalTime: newReservationInfo.arrivalTime,
+              acceptStatus: newReservationInfo.acceptStatus,
+              linkageChecked: true,
+            };
+          }
+
+          if (!reminder || reminder.status !== 'active') {
+            setTimeout(() => {
+              const currentDialogState = (contextRef.current.dialogState || {}) as any;
+              contextRef.current.dialogState = {
+                ...currentDialogState,
+                currentIntent: 'reservation',
+                reservationReminderStep: 'asking_setting',
+                data: {
+                  ...(currentDialogState.data || {}),
+                  reservationTimestamp: reservationTs,
+                  orderId: currentOrderId,
+                  productName: newReservationInfo.storeName || lastOrderCard?.productName,
+                  defaultRemindAt,
+                  existingReminder: reminder,
+                },
+              } as any;
+              addAssistantMessage(
+                `是否需要帮你设置一个 ${remDate} ${remTime} 的使用提醒？也可以告诉我你想设置的日期、时间，需要早于预约时间哦～`,
+                {
+                  quickReplies: [
+                    { id: QR_CONFIRM_SET_REMINDER_AFTER_RESERVATION, question: '确认设置', score: 1, priority: 0 },
+                  ],
+                }
+              );
+            }, 800);
+          } else if (reminder.remindAt > reservationTs) {
+            setTimeout(() => {
+              const currentDialogState = (contextRef.current.dialogState || {}) as any;
+              contextRef.current.dialogState = {
+                ...currentDialogState,
+                currentIntent: 'reservation',
+                reservationReminderStep: 'asking_adjust_late',
+                data: {
+                  ...(currentDialogState.data || {}),
+                  reservationTimestamp: reservationTs,
+                  orderId: currentOrderId,
+                  productName: newReservationInfo.storeName || lastOrderCard?.productName,
+                  defaultRemindAt,
+                  existingReminder: reminder,
+                },
+              } as any;
+              addAssistantMessage(
+                `订单使用提醒晚于预约时间，是否需要改为预约时间前 1 个小时？也可以告诉我要设置什么日期、时间～`,
+                {
+                  quickReplies: [
+                    { id: QR_ADJUST_REMINDER_AFTER_REBOOK, question: '帮我调整', score: 1, priority: 0 },
+                  ],
+                }
+              );
+            }, 800);
+          } else {
+            const diffHours = (reservationTs - reminder.remindAt) / (1000 * 60 * 60);
+            if (diffHours > 12) {
+              setTimeout(() => {
+                const currentDialogState = (contextRef.current.dialogState || {}) as any;
+                contextRef.current.dialogState = {
+                  ...currentDialogState,
+                  currentIntent: 'reservation',
+                  reservationReminderStep: 'asking_adjust_early',
+                  data: {
+                    ...(currentDialogState.data || {}),
+                    reservationTimestamp: reservationTs,
+                    orderId: currentOrderId,
+                    productName: newReservationInfo.storeName || lastOrderCard?.productName,
+                    defaultRemindAt,
+                    existingReminder: reminder,
+                  },
+                } as any;
+                const existingRemDate = formatShortDate(reminder.remindAt);
+                const existingRemTime = formatTime(reminder.remindAt);
+                addAssistantMessage(
+                  `订单当前已设置${existingRemDate} ${existingRemTime}的使用提醒，使用提醒时间距离预约时间太久可能中间会忘记，是否重新设置为预约时间前 1 个小时提醒？`,
+                  {
+                    quickReplies: [
+                      { id: QR_ADJUST_REMINDER_AFTER_REBOOK, question: '帮我调整', score: 1, priority: 0 },
+                    ],
+                  }
+                );
+              }, 800);
+            }
+          }
+        }
+      }
+    }
+
+    if (isRebook && currentOrderId && newReservationInfo.arrivalTime) {
+      const reminder = getReminderByOrder(currentOrderId);
+      if (reminder && reminder.status === 'active') {
+        const newReservationTs = parseArrivalTimeToTimestamp(newReservationInfo.arrivalTime);
+        if (newReservationTs) {
+          const newRemindAt = newReservationTs - 60 * 60 * 1000;
+          if (reminder.source === 'auto_from_reservation') {
+            const updated = setReminderStorage(currentOrderId, newRemindAt, {
+              productName: reminder.productName,
+              validDate: reminder.validDate,
+              source: 'auto_from_reservation',
+            });
+            setMessages((prev) => prev.map((msg) => {
+              if (msg.redeemReminder && msg.redeemReminder.orderId === currentOrderId) {
+                return { ...msg, redeemReminder: updated };
+              }
+              return msg;
+            }));
+            setTimeout(() => {
+              const resDate = formatShortDate(newReservationTs);
+              const resTime = formatTime(newReservationTs);
+              const remDate = formatShortDate(newRemindAt);
+              const remTime = formatTime(newRemindAt);
+              addAssistantMessage(
+                `您的预约时间已变更为 ${resDate} ${resTime}，为您自动调整使用提醒至 ${remDate} ${remTime}（预约前1小时）`,
+                {
+                  quickReplies: [
+                    { id: 'qr-modify-reminder-time', question: '修改提醒时间', score: 1, priority: 0 },
+                  ],
+                }
+              );
+            }, 800);
+          } else if (reminder.source === 'user_custom') {
+            const diffHours = Math.abs(reminder.remindAt - newReservationTs) / (1000 * 60 * 60);
+            if (diffHours < 1) {
+              setTimeout(() => {
+                const resDate = formatShortDate(newReservationTs);
+                const resTime = formatTime(newReservationTs);
+                addAssistantMessage(
+                  `您的预约时间已变更为 ${resDate} ${resTime}，当前提醒距离预约时间不足 1 小时，是否调整为预约前 1 小时提醒？`,
+                  {
+                    quickReplies: [
+                      { id: QR_ADJUST_REMINDER_AFTER_REBOOK, question: '帮我调整', score: 1, priority: 0 },
+                    ],
+                  }
+                );
+              }, 800);
+            }
+          }
+        }
+      }
+    }
+  }, [addAssistantMessage, updateMessageById, updateReservationStatus, reservationEditMode, rebookFromMessageId, currentOrderId, messages, clearReservationTimers, findLastOrderCard]);
 
   const cancelReservation = useCallback((messageId: string, reservation: ReservationInfoCardData) => {
     console.log('Cancel reservation:', reservation);
@@ -1451,21 +1850,48 @@ export const AiAssistantProvider: React.FC<{
       content: '预约已取消',
       reservationInfo: canceledReservation,
     });
+    let orderId: string | undefined;
     if (currentOrderId) {
+      orderId = currentOrderId;
       setReservationsByOrder((prev) => ({
         ...prev,
         [currentOrderId]: { ...canceledReservation, orderId: currentOrderId },
       }));
       clearReservationTimers(currentOrderId);
     } else if (reservation.orderId) {
-      const orderId = reservation.orderId;
+      const resOrderId = reservation.orderId;
+      orderId = resOrderId;
       setReservationsByOrder((prev) => ({
         ...prev,
-        [orderId]: { ...canceledReservation, orderId },
+        [resOrderId]: { ...canceledReservation, orderId: resOrderId },
       }));
-      clearReservationTimers(orderId);
+      clearReservationTimers(resOrderId);
     }
-  }, [updateMessageById, currentOrderId, clearReservationTimers]);
+    const currentDialogState = (contextRef.current.dialogState || {}) as any;
+    if (currentDialogState.currentIntent === 'reservation') {
+      contextRef.current.dialogState = {
+        ...currentDialogState,
+        currentIntent: null,
+        currentStep: 'idle',
+        reservationStep: 'idle',
+      };
+    }
+    if (orderId) {
+      const reminder = getReminderByOrder(orderId);
+      if (reminder && reminder.status === 'active') {
+        cancelReminderStorage(orderId);
+        setMessages((prev) => prev.map((msg) => {
+          if (msg.redeemReminder && msg.redeemReminder.orderId === orderId) {
+            return { ...msg, redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const } };
+          }
+          return msg;
+        }));
+        setTimeout(() => {
+          addAssistantMessage('预约已取消，使用提醒已同步取消，如有需求可重新设置使用提醒～');
+        }, 400);
+      }
+    }
+  }, [updateMessageById, currentOrderId, clearReservationTimers, addAssistantMessage, messages]);
 
   const rebookReservation = useCallback((messageId: string, reservation: ReservationInfoCardData) => {
     console.log('Rebook reservation:', reservation);
@@ -1480,10 +1906,16 @@ export const AiAssistantProvider: React.FC<{
       ...reservation,
       acceptStatus: 'canceled' as const,
     };
-    setReservationsByOrder((prev) => ({
-      ...prev,
+    const newReservations = {
+      ...reservationsByOrder,
       [orderId]: canceledReservation,
-    }));
+    };
+    setReservationsByOrder(newReservations);
+    try {
+      localStorage.setItem(STORAGE_KEY_RESERVATIONS, JSON.stringify(newReservations));
+    } catch (e) {
+      console.error('Failed to save reservations:', e);
+    }
     clearReservationTimers(orderId);
     const relatedMsg = messages.find((m) => m.reservationInfo && m.reservationInfo.orderId === orderId);
     if (relatedMsg) {
@@ -1492,7 +1924,20 @@ export const AiAssistantProvider: React.FC<{
         reservationInfo: canceledReservation,
       });
     }
-  }, [reservationsByOrder, messages, updateMessageById, clearReservationTimers]);
+    const reminder = getReminderByOrder(orderId);
+    if (reminder && reminder.status === 'active') {
+      cancelReminderStorage(orderId);
+      setMessages((prev) => prev.map((msg) => {
+        if (msg.redeemReminder && msg.redeemReminder.orderId === orderId) {
+          return { ...msg, redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const } };
+        }
+        return msg;
+      }));
+      setTimeout(() => {
+        addAssistantMessage('预约已取消，使用提醒已同步取消，如有需求可重新设置使用提醒～');
+      }, 400);
+    }
+  }, [reservationsByOrder, messages, updateMessageById, clearReservationTimers, addAssistantMessage]);
 
   const rebookOrderReservation = useCallback((orderId: string) => {
     console.log('Rebook order reservation:', orderId);
@@ -1504,14 +1949,16 @@ export const AiAssistantProvider: React.FC<{
   const cancelReminder = useCallback((orderId: string) => {
     console.log('Cancel reminder:', orderId);
     cancelReminderStorage(orderId);
-    const relatedMsg = messages.find((m) => m.redeemReminder && m.orderCard?.id === orderId);
-    if (relatedMsg && relatedMsg.redeemReminder) {
-      const canceledReminder = { ...relatedMsg.redeemReminder, status: 'canceled' as const };
-      updateMessageById(relatedMsg.id, {
-        content: '使用提醒已取消',
-        redeemReminder: canceledReminder,
-      });
-    }
+    setMessages((prev) => prev.map((msg) => {
+      if (msg.redeemReminder && msg.redeemReminder.orderId === orderId && msg.redeemReminder.status !== 'canceled') {
+        return {
+          ...msg,
+          content: '使用提醒已取消',
+          redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const },
+        };
+      }
+      return msg;
+    }));
   }, [messages, updateMessageById]);
 
   const modifyReminder = useCallback((orderId: string, productName?: string, validDate?: string) => {
@@ -1631,7 +2078,6 @@ export const AiAssistantProvider: React.FC<{
   }, [overlayMode, closeAssistant]);
 
   useEffect(() => {
-    if (overlayMode === 'closed') return;
     saveChatHistory(messages, contextRef.current);
   }, [messages, overlayMode]);
 
@@ -1642,6 +2088,239 @@ export const AiAssistantProvider: React.FC<{
       console.error('Failed to save reservations:', e);
     }
   }, [reservationsByOrder]);
+
+  useEffect(() => {
+    if (overlayMode === 'closed') return;
+    if (!currentOrderId) return;
+
+    const reservation = reservationsByOrder[currentOrderId];
+    if (!reservation) {
+      if (lastCheckedReservationRef.current[currentOrderId]) {
+        delete lastCheckedReservationRef.current[currentOrderId];
+      }
+      return;
+    }
+
+    const lastChecked = lastCheckedReservationRef.current[currentOrderId];
+
+    if (!lastChecked) {
+      lastCheckedReservationRef.current[currentOrderId] = {
+        arrivalTime: reservation.arrivalTime,
+        acceptStatus: reservation.acceptStatus,
+        linkageChecked: true,
+      };
+      if (reservation.acceptStatus === 'canceled') {
+        const reminder = getReminderByOrder(currentOrderId);
+        if (reminder && reminder.status === 'active') {
+          cancelReminderStorage(currentOrderId);
+          setMessages((prev) => prev.map((msg) => {
+            if (msg.redeemReminder && msg.redeemReminder.orderId === currentOrderId && msg.redeemReminder.status !== 'canceled') {
+              return { ...msg, redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const } };
+            }
+            return msg;
+          }));
+          const hasExistingCancelMsg = messages.some((msg) => {
+            if (msg.role !== 'assistant') return false;
+            const content = msg.content || '';
+            return content.includes('使用提醒已同步取消') ||
+                   content.includes('是否同时取消使用提醒');
+          });
+          if (!hasExistingCancelMsg) {
+            setTimeout(() => {
+              addAssistantMessage('预约已取消，使用提醒已同步取消，如有需求可重新设置使用提醒～');
+            }, 300);
+          }
+        } else if (reminder && reminder.status === 'canceled') {
+          setMessages((prev) => prev.map((msg) => {
+            if (msg.redeemReminder && msg.redeemReminder.orderId === currentOrderId && msg.redeemReminder.status !== 'canceled') {
+              return { ...msg, redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const } };
+            }
+            return msg;
+          }));
+        }
+      }
+      return;
+    }
+
+    const arrivalTimeChanged = lastChecked.arrivalTime !== reservation.arrivalTime;
+    const statusChanged = lastChecked.acceptStatus !== reservation.acceptStatus;
+
+    if (!arrivalTimeChanged && !statusChanged) {
+      return;
+    }
+
+    const reminder = getReminderByOrder(currentOrderId);
+    const isRebook = statusChanged && 
+      lastChecked.acceptStatus === 'canceled' && 
+      (reservation.acceptStatus === 'accepted' || reservation.acceptStatus === 'pending');
+
+    if (isRebook && (!reminder || reminder.status !== 'active')) {
+      lastCheckedReservationRef.current[currentOrderId] = {
+        arrivalTime: reservation.arrivalTime,
+        acceptStatus: reservation.acceptStatus,
+        linkageChecked: true,
+      };
+      const reservationTs = parseArrivalTimeToTimestamp(reservation.arrivalTime);
+      if (reservationTs) {
+        const hoursUntil = (reservationTs - Date.now()) / (1000 * 60 * 60);
+        if (hoursUntil >= 2) {
+          const lastOrderCard = findLastOrderCard();
+          const isFree = lastOrderCard ? isFreeReservationOrder(lastOrderCard) : false;
+          if (isFree) {
+            const defaultRemindAt = reservationTs - 60 * 60 * 1000;
+            const remDate = formatShortDate(defaultRemindAt);
+            const remTime = formatTime(defaultRemindAt);
+            setTimeout(() => {
+              const currentDialogState = (contextRef.current.dialogState || {}) as any;
+              contextRef.current.dialogState = {
+                ...currentDialogState,
+                currentIntent: 'reservation',
+                reservationReminderStep: 'asking_setting',
+                data: {
+                  ...(currentDialogState.data || {}),
+                  reservationTimestamp: reservationTs,
+                  orderId: currentOrderId,
+                  productName: lastOrderCard?.productName || reservation.storeName,
+                  defaultRemindAt,
+                  existingReminder: reminder,
+                },
+              } as any;
+              addAssistantMessage(
+                `是否需要帮你设置一个 ${remDate} ${remTime} 的使用提醒？也可以告诉我你想设置的日期、时间，需要早于预约时间哦～`,
+                {
+                  quickReplies: [
+                    { id: QR_CONFIRM_SET_REMINDER_AFTER_RESERVATION, question: '确认设置', score: 1, priority: 0 },
+                  ],
+                }
+              );
+            }, 800);
+          }
+        }
+      }
+      return;
+    }
+
+    if (!reminder || reminder.status !== 'active') {
+      lastCheckedReservationRef.current[currentOrderId] = {
+        arrivalTime: reservation.arrivalTime,
+        acceptStatus: reservation.acceptStatus,
+        linkageChecked: true,
+      };
+      return;
+    }
+
+    const hasExistingLinkageMsg = messages.some((msg) => {
+      if (msg.role !== 'assistant') return false;
+      const content = msg.content || '';
+      return content.includes('使用提醒已同步取消') ||
+             content.includes('是否同时取消使用提醒') ||
+             content.includes('为您自动调整使用提醒') ||
+             content.includes('当前提醒距离预约时间不足');
+    });
+
+    if (hasExistingLinkageMsg) {
+      lastCheckedReservationRef.current[currentOrderId] = {
+        arrivalTime: reservation.arrivalTime,
+        acceptStatus: reservation.acceptStatus,
+        linkageChecked: true,
+      };
+      return;
+    }
+
+    if (statusChanged && reservation.acceptStatus === 'canceled') {
+      lastCheckedReservationRef.current[currentOrderId] = {
+        arrivalTime: reservation.arrivalTime,
+        acceptStatus: reservation.acceptStatus,
+        linkageChecked: true,
+      };
+      if (reminder && reminder.status === 'active') {
+        cancelReminderStorage(currentOrderId);
+      }
+      setMessages((prev) => prev.map((msg) => {
+        if (msg.redeemReminder && msg.redeemReminder.orderId === currentOrderId && msg.redeemReminder.status !== 'canceled') {
+          return { ...msg, redeemReminder: { ...msg.redeemReminder, status: 'canceled' as const } };
+        }
+        return msg;
+      }));
+      setTimeout(() => {
+        addAssistantMessage('预约已取消，使用提醒已同步取消，如有需求可重新设置使用提醒～');
+      }, 400);
+      return;
+    }
+
+    if (arrivalTimeChanged && (reservation.acceptStatus === 'accepted' || reservation.acceptStatus === 'pending')) {
+      const newReservationTs = parseArrivalTimeToTimestamp(reservation.arrivalTime);
+      if (newReservationTs) {
+        const newRemindAt = newReservationTs - 60 * 60 * 1000;
+        if (reminder.source === 'auto_from_reservation') {
+          const updated = setReminderStorage(currentOrderId, newRemindAt, {
+            productName: reminder.productName,
+            validDate: reminder.validDate,
+            source: 'auto_from_reservation',
+          });
+          setMessages((prev) => prev.map((msg) => {
+            if (msg.redeemReminder && msg.redeemReminder.orderId === currentOrderId) {
+              return { ...msg, redeemReminder: updated };
+            }
+            return msg;
+          }));
+          lastCheckedReservationRef.current[currentOrderId] = {
+            arrivalTime: reservation.arrivalTime,
+            acceptStatus: reservation.acceptStatus,
+            linkageChecked: true,
+          };
+          setTimeout(() => {
+            const resDate = formatShortDate(newReservationTs);
+            const resTime = formatTime(newReservationTs);
+            const remDate = formatShortDate(newRemindAt);
+            const remTime = formatTime(newRemindAt);
+            addAssistantMessage(
+              `您的预约时间已变更为 ${resDate} ${resTime}，为您自动调整使用提醒至 ${remDate} ${remTime}（预约前1小时）`,
+              {
+                quickReplies: [
+                  { id: 'qr-modify-reminder-time', question: '修改提醒时间', score: 1, priority: 0 },
+                ],
+              }
+            );
+          }, 600);
+        } else if (reminder.source === 'user_custom') {
+          const diffHours = Math.abs(reminder.remindAt - newReservationTs) / (1000 * 60 * 60);
+          if (diffHours < 1) {
+            lastCheckedReservationRef.current[currentOrderId] = {
+              arrivalTime: reservation.arrivalTime,
+              acceptStatus: reservation.acceptStatus,
+              linkageChecked: true,
+            };
+            setTimeout(() => {
+              const resDate = formatShortDate(newReservationTs);
+              const resTime = formatTime(newReservationTs);
+              addAssistantMessage(
+                `您的预约时间已变更为 ${resDate} ${resTime}，当前提醒距离预约时间不足 1 小时，是否调整为预约前 1 小时提醒？`,
+                {
+                  quickReplies: [
+                    { id: QR_ADJUST_REMINDER_AFTER_REBOOK, question: '帮我调整', score: 1, priority: 0 },
+                  ],
+                }
+              );
+            }, 600);
+          } else {
+            lastCheckedReservationRef.current[currentOrderId] = {
+              arrivalTime: reservation.arrivalTime,
+              acceptStatus: reservation.acceptStatus,
+              linkageChecked: true,
+            };
+          }
+        }
+        return;
+      }
+    }
+
+    lastCheckedReservationRef.current[currentOrderId] = {
+      arrivalTime: reservation.arrivalTime,
+      acceptStatus: reservation.acceptStatus,
+      linkageChecked: true,
+    };
+  }, [currentOrderId, reservationsByOrder, overlayMode, messages, addAssistantMessage, updateMessageById]);
 
   useEffect(() => {
     const now = Date.now();

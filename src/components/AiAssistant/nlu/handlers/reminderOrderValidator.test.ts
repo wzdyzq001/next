@@ -21,6 +21,44 @@ describe('canOrderSetReminder', () => {
       const result = canOrderSetReminder(order);
       expect(result.canSet).toBe(true);
     });
+
+    it('餐饮正餐已预约 → 通过（自由预约）', () => {
+      const order = {
+        category: 'food',
+        statusText: '待使用',
+        bookingStatus: '已预约',
+        bookingDate: '2026-07-15',
+        bookingTime: '19:30',
+      };
+      const result = canOrderSetReminder(order);
+      expect(result.canSet).toBe(true);
+      expect(result.reservationTimestamp).toBeDefined();
+    });
+
+    it('餐饮正餐已预约（预约成功） → 通过（自由预约）', () => {
+      const order = {
+        category: 'food',
+        statusText: '待使用',
+        bookingStatus: '预约成功',
+        bookingDate: '2026-08-01',
+      };
+      const result = canOrderSetReminder(order);
+      expect(result.canSet).toBe(true);
+      expect(result.reservationTimestamp).toBeDefined();
+    });
+
+    it('餐饮自助点餐（self_order）已预约 → 不通过自由预约逻辑', () => {
+      const order = {
+        category: 'food',
+        statusText: '待使用',
+        bookingStatus: '已预约',
+        redeemMethod: 'self_order',
+        bookingDate: '2026-07-20',
+      };
+      const result = canOrderSetReminder(order);
+      expect(result.canSet).toBe(true);
+      expect(result.reservationTimestamp).toBeUndefined();
+    });
   });
 
   describe('综合类', () => {
@@ -49,6 +87,44 @@ describe('canOrderSetReminder', () => {
       };
       const result = canOrderSetReminder(order);
       expect(result.canSet).toBe(true);
+    });
+
+    it('综合休闲娱乐已预约 → 通过（自由预约）', () => {
+      const order = {
+        category: 'fun',
+        statusText: '待使用',
+        bookingStatus: '已预约',
+        bookingDate: '2026-07-20',
+        bookingTime: '14:00',
+      };
+      const result = canOrderSetReminder(order);
+      expect(result.canSet).toBe(true);
+      expect(result.reservationTimestamp).toBeDefined();
+    });
+
+    it('综合丽人已预约 → 通过（自由预约）', () => {
+      const order = {
+        category: 'beauty',
+        statusText: '待使用',
+        bookingStatus: '预约成功',
+        bookingDate: '2026-08-05',
+      };
+      const result = canOrderSetReminder(order);
+      expect(result.canSet).toBe(true);
+      expect(result.reservationTimestamp).toBeDefined();
+    });
+
+    it('综合演出已预约 → 通过（自由预约）', () => {
+      const order = {
+        category: 'show',
+        statusText: '待使用',
+        bookingStatus: '已预约',
+        bookingDate: '2026-09-10',
+        bookingTime: '19:00',
+      };
+      const result = canOrderSetReminder(order);
+      expect(result.canSet).toBe(true);
+      expect(result.reservationTimestamp).toBeDefined();
     });
   });
 

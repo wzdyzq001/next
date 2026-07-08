@@ -24,7 +24,9 @@ export function extractEntities(message: string): Entity[] {
 }
 
 export function extractDate(message: string): Entity | null {
-  const patterns: Array<{ regex: RegExp; type: string; parse: (match: RegExpMatchArray) => string }> = [
+  const messageNoSpaces = message.replace(/\s+/g, '');
+
+  const patterns: Array<{ regex: RegExp; type: string; parse: (match: RegExpMatchArray) => string; useNoSpaces?: boolean }> = [
     {
       regex: /(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/,
       type: 'date',
@@ -34,6 +36,12 @@ export function extractDate(message: string): Entity | null {
       regex: /([一二两三四五六七八九十]+)月([一二两三四五六七八九十]+)[日号]/,
       type: 'date',
       parse: (match) => `${parseChineseNumber(match[1])}月${parseChineseNumber(match[2])}日`,
+    },
+    {
+      regex: /([一二两三四五六七八九十]+)月([一二两三四五六七八九十]+)[日号]/,
+      type: 'date',
+      parse: (match) => `${parseChineseNumber(match[1])}月${parseChineseNumber(match[2])}日`,
+      useNoSpaces: true,
     },
     {
       regex: /大前天/,
@@ -71,6 +79,26 @@ export function extractDate(message: string): Entity | null {
       parse: () => '明天',
     },
     {
+      regex: /(\d+)\s*天前/,
+      type: 'date',
+      parse: (match) => `${match[1]}天前`,
+    },
+    {
+      regex: /(\d+)\s*天后/,
+      type: 'date',
+      parse: (match) => `${match[1]}天后`,
+    },
+    {
+      regex: /([一二两三四五六七八九十]+)\s*天前/,
+      type: 'date',
+      parse: (match) => `${parseChineseNumber(match[1])}天前`,
+    },
+    {
+      regex: /([一二两三四五六七八九十]+)\s*天后/,
+      type: 'date',
+      parse: (match) => `${parseChineseNumber(match[1])}天后`,
+    },
+    {
       regex: /下周(一|二|三|四|五|六|日|天)/,
       type: 'date',
       parse: (match) => `下周${match[1]}`,
@@ -89,6 +117,12 @@ export function extractDate(message: string): Entity | null {
       regex: /(\d{1,2})月(\d{1,2})[日号]/,
       type: 'date',
       parse: (match) => `${match[1]}月${match[2]}日`,
+    },
+    {
+      regex: /(\d{1,2})月(\d{1,2})[日号]/,
+      type: 'date',
+      parse: (match) => `${match[1]}月${match[2]}日`,
+      useNoSpaces: true,
     },
     {
       regex: /(\d{1,2})[\/\.](\d{1,2})[日号]?/,
@@ -113,7 +147,8 @@ export function extractDate(message: string): Entity | null {
   ];
 
   for (const pattern of patterns) {
-    const match = message.match(pattern.regex);
+    const target = pattern.useNoSpaces ? messageNoSpaces : message;
+    const match = target.match(pattern.regex);
     if (match) {
       return {
         type: 'date' as const,
@@ -539,6 +574,20 @@ export function parseDateToTimestamp(
   if (dateStr in relativeDayMap) {
     const d = new Date(today);
     d.setDate(d.getDate() + relativeDayMap[dateStr]);
+    return d.getTime();
+  }
+
+  const daysAfterMatch = dateStr.match(/^(\d+)天后$/);
+  if (daysAfterMatch) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + parseInt(daysAfterMatch[1]));
+    return d.getTime();
+  }
+
+  const daysBeforeMatch = dateStr.match(/^(\d+)天前$/);
+  if (daysBeforeMatch) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - parseInt(daysBeforeMatch[1]));
     return d.getTime();
   }
 

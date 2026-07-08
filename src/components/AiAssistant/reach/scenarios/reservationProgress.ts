@@ -63,7 +63,13 @@ function parseArrivalTime(arrivalTime: string): number | null {
       month = parseInt(isoMatch[1], 10) - 1;
       day = parseInt(isoMatch[2], 10);
     } else {
-      return null;
+      const dotMatch = datePart.match(/(\d{1,2})\.(\d{1,2})/);
+      if (dotMatch) {
+        month = parseInt(dotMatch[1], 10) - 1;
+        day = parseInt(dotMatch[2], 10);
+      } else {
+        return null;
+      }
     }
   }
 

@@ -102,7 +102,6 @@
   pointer-events: auto;
   user-select: none;
   position: relative;
-  overflow: hidden;
   transform-origin: left center;
 }
 
@@ -137,7 +136,7 @@
 
 .ai-reach-bubble-arrow-down {
   position: absolute;
-  bottom: -6px;
+  bottom: -4px;
   left: 24px;
   width: 0;
   height: 0;
@@ -145,7 +144,6 @@
   border-right: 6px solid transparent;
   border-top: 6px solid #fff;
   transform: translateX(-50%);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
 }
 
 .ai-reach-bubble-content {

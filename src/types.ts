@@ -359,6 +359,7 @@ export interface RedeemReminder {
   status: 'active' | 'canceled' | 'triggered';
   productName?: string;
   validDate?: string;
+  source?: 'auto_from_reservation' | 'user_custom';
 }
 
 /** 订单数据模型 */

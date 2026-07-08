@@ -3,6 +3,9 @@ import { createQuickReply } from '../utils';
 import { extractDate, extractTime, extractPeopleCount, extractPhone } from '../entityExtractor';
 import { MOCK_RESERVATION_PENDING } from '../scenarioData';
 import type { GuidedQuestion } from '../../types';
+import { buildReservationReminderFollowUp, handleReservationReminderIntent } from './reservationReminderHandler';
+import { parseReservationTimestamp, isFreeReservationOrder } from '../reservationReminderUtils';
+import { getReminderByOrder } from '../../../../redeemReminder';
 
 const BUSINESS_START_HOUR = 9;
 const BUSINESS_START_MIN = 0;
@@ -299,6 +302,64 @@ function isGeneralCategory(orderCard: any): boolean {
   return cat === 'general' || label === '综合' || label === '休闲娱乐' || label === '丽人';
 }
 
+function parseArrivalTime(arrivalTime: string): number | null {
+  if (!arrivalTime) return null;
+  const parts = arrivalTime.split(' ');
+  if (parts.length < 2) return null;
+
+  const datePart = parts[0];
+  const timePart = parts[1];
+
+  let month = 0;
+  let day = 0;
+
+  const cnMatch = datePart.match(/(\d{1,2})月(\d{1,2})日/);
+  if (cnMatch) {
+    month = parseInt(cnMatch[1], 10) - 1;
+    day = parseInt(cnMatch[2], 10);
+  } else {
+    const isoMatch = datePart.match(/\d{4}-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      month = parseInt(isoMatch[1], 10) - 1;
+      day = parseInt(isoMatch[2], 10);
+    } else {
+      const dotMatch = datePart.match(/(\d{1,2})\.(\d{1,2})/);
+      if (dotMatch) {
+        month = parseInt(dotMatch[1], 10) - 1;
+        day = parseInt(dotMatch[2], 10);
+      } else {
+        return null;
+      }
+    }
+  }
+
+  const timeMatch = timePart.match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) return null;
+
+  const hour = parseInt(timeMatch[1], 10);
+  const min = parseInt(timeMatch[2], 10);
+
+  const now = new Date();
+  const date = new Date(now.getFullYear(), month, day, hour, min, 0, 0);
+
+  if (month < now.getMonth()) {
+    date.setFullYear(now.getFullYear() + 1);
+  }
+
+  return date.getTime();
+}
+
+function isReservationActive(reservation: any, now: number): boolean {
+  if (!reservation) return false;
+  if (reservation.acceptStatus === 'pending') return true;
+  if (reservation.acceptStatus === 'accepted') {
+    const arrivalTs = parseArrivalTime(reservation.arrivalTime);
+    if (arrivalTs === null) return true;
+    return arrivalTs > now;
+  }
+  return false;
+}
+
 function hasSelfOrderOrDelivery(orderCard: any): boolean {
   const redeemMethod = orderCard.redeemMethod || orderCard.fulfillmentType || '';
   const redeemTypes = orderCard.redeemTypes || [];
@@ -330,8 +391,38 @@ export function handleReservationIntent(
   message: string,
   context: NluContext
 ): NluResponse {
-  const { dialogState, orderCard } = context;
+  const { dialogState, orderCard, reservationsByOrder } = context;
   const reservationStep = dialogState.reservationStep || 'idle';
+
+  if (dialogState.reservationReminderStep && dialogState.reservationReminderStep !== 'completed') {
+    return handleReservationReminderIntent(message, context);
+  }
+
+  if (orderCard && reservationsByOrder) {
+    const orderId = orderCard.id || '';
+    if (orderId) {
+      const existingReservation = reservationsByOrder[orderId];
+      if (existingReservation && isReservationActive(existingReservation, Date.now())) {
+        const statusText = existingReservation.acceptStatus === 'pending' ? '商家确认中' : '已预约成功';
+        return {
+          messages: [
+            {
+              role: 'assistant',
+              contentType: 'text',
+              content: `<span class="ai-reservation-hint">您的预约「${statusText}」，可自行修改或取消预约</span>`,
+              reservationInfo: existingReservation,
+            },
+          ],
+          newDialogState: {
+            ...dialogState,
+            currentIntent: 'reservation',
+            currentStep: 'idle',
+            reservationStep: 'idle',
+          },
+        };
+      }
+    }
+  }
 
   if (reservationStep === 'collecting_info') {
     return handleReservationCollectInfo(message, context);
@@ -446,7 +537,7 @@ function validateAndStartCollection(
 
   if (reservationsByOrder && orderId) {
     const existingReservation = reservationsByOrder[orderId];
-    if (existingReservation && (existingReservation.acceptStatus === 'pending' || existingReservation.acceptStatus === 'accepted')) {
+    if (existingReservation && isReservationActive(existingReservation, Date.now())) {
       const statusText = existingReservation.acceptStatus === 'pending' ? '商家确认中' : '已预约成功';
       return {
         messages: [
@@ -899,11 +990,10 @@ function submitReservation(
   entities: Record<string, string>,
   context: NluContext
 ): NluResponse {
-  const { dialogState } = context;
+  const { dialogState, orderCard } = context;
   const storeName = entities.storeName || (dialogState.data?.storeName as string) || '';
   const orderId = entities.orderId || (dialogState.data?.orderId as string) || '';
   const phone = entities.phone || '';
-  const orderCard = context.orderCard;
 
   const reservationInfo = {
     ...MOCK_RESERVATION_PENDING,
@@ -920,28 +1010,75 @@ function submitReservation(
     reservationNo: 'YY' + Date.now(),
   };
 
-  return {
-    messages: [
-      {
-        role: 'assistant',
-        contentType: 'text',
-        content: '正在为您提交预约申请，请稍候...',
-        delay: 1000,
-      },
-      {
-        role: 'assistant',
-        contentType: 'text',
-        content: '商家确认后会第一时间通知您。',
-        reservationInfo,
-      },
-    ],
-    newDialogState: {
-      ...dialogState,
-      currentIntent: 'reservation',
-      currentStep: 'completed',
-      reservationStep: 'completed',
-      entities,
+  const messages: NluResponse['messages'] = [
+    {
+      role: 'assistant',
+      contentType: 'text',
+      content: '正在为您提交预约申请，请稍候...',
+      delay: 1000,
     },
+    {
+      role: 'assistant',
+      contentType: 'text',
+      content: '商家确认后会第一时间通知您。',
+      reservationInfo,
+    },
+  ];
+
+  let newDialogState: NluResponse['newDialogState'] = {
+    ...dialogState,
+    currentIntent: 'reservation',
+    currentStep: 'completed',
+    reservationStep: 'completed',
+    entities,
+  };
+
+  const isFreeReserve = orderCard ? isFreeReservationOrder(orderCard) : false;
+  if (isFreeReserve && entities.date && entities.time && orderId) {
+    const reservationTimestamp = parseReservationTimestamp(entities.date, entities.time);
+    if (reservationTimestamp) {
+      const productName = (orderCard as any)?.productName || '';
+      let existingReminder;
+      try {
+        existingReminder = getReminderByOrder(orderId);
+      } catch (e) {
+        console.warn('[reservationHandler] getReminderByOrder failed:', e);
+      }
+
+      const followUp = buildReservationReminderFollowUp(
+        reservationTimestamp,
+        orderId,
+        productName,
+        existingReminder
+      );
+
+      if (followUp) {
+        messages.push({
+          role: 'assistant',
+          contentType: 'text',
+          content: followUp.content,
+          quickReplies: [createQuickReply(followUp.buttonId, followUp.buttonText)],
+        });
+
+        newDialogState = {
+          ...newDialogState,
+          reservationReminderStep: followUp.step,
+          data: {
+            ...newDialogState.data,
+            reservationTimestamp: followUp.reservationTimestamp,
+            orderId: followUp.orderId,
+            productName: followUp.productName,
+            existingReminder: followUp.existingReminder,
+            defaultRemindAt: followUp.defaultRemindAt,
+          },
+        };
+      }
+    }
+  }
+
+  return {
+    messages,
+    newDialogState,
   };
 }
 

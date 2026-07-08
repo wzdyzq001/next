@@ -36,6 +36,39 @@ export function processNluMessage(
     return handleCancelFlow(context);
   }
 
+  const reservationReminderStep = dialogState.reservationReminderStep;
+  if (reservationReminderStep && reservationReminderStep !== 'completed') {
+    const newIntent = recognizeIntent(message);
+    const isNewReservationRequest =
+      newIntent === 'reservation' &&
+      !isAffirmative(message) &&
+      !isNegative(message) &&
+      !isReminderRelatedResponse(message);
+    if (isNewReservationRequest) {
+      const clearedState = {
+        ...dialogState,
+        reservationReminderStep: undefined,
+        currentStep: 'idle',
+        reservationStep: 'idle',
+        data: {
+          ...dialogState.data,
+          date: undefined,
+          time: undefined,
+          peopleCount: undefined,
+          phone: undefined,
+          reservationTimestamp: undefined,
+          defaultRemindAt: undefined,
+          existingReminder: undefined,
+        },
+      };
+      return processNluMessage(message, {
+        ...context,
+        dialogState: clearedState,
+      });
+    }
+    return handleReservationIntent(message, context);
+  }
+
   const newIntent = recognizeIntent(message);
   const entities = extractEntities(message);
 
@@ -173,6 +206,14 @@ function handleCancelFlow(context: NluContext): NluResponse {
     ],
     newDialogState: createInitialDialogState(),
   };
+}
+
+function isReminderRelatedResponse(message: string): boolean {
+  const lowerMsg = message.toLowerCase().trim();
+  if (lowerMsg.startsWith('qr-')) return true;
+  if (/提醒/.test(message) && /(设置|调整|改|换|我|确认)/.test(message)) return true;
+  if (/(设置|调整|改|换|确认).*提醒/.test(message)) return true;
+  return false;
 }
 
 function handleUnknownIntent(message: string, context: NluContext): NluResponse {

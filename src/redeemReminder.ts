@@ -249,7 +249,7 @@ function saveReminders(reminders: Record<string, RedeemReminder>): void {
   }
 }
 
-function setReminder(orderId: string, remindAt: number, extra?: { productName?: string; validDate?: string }): RedeemReminder {
+function setReminder(orderId: string, remindAt: number, extra?: { productName?: string; validDate?: string; source?: 'auto_from_reservation' | 'user_custom' }): RedeemReminder {
   const reminders = getReminders();
   const existing = reminders[orderId];
   const now = Date.now();
@@ -262,12 +262,22 @@ function setReminder(orderId: string, remindAt: number, extra?: { productName?: 
     status: 'active',
     ...(extra?.productName ? { productName: extra.productName } : {}),
     ...(extra?.validDate ? { validDate: extra.validDate } : {}),
+    ...(extra?.source ? { source: extra.source } : (existing?.source ? { source: existing.source } : {})),
   };
 
   reminders[orderId] = reminder;
   saveReminders(reminders);
   notifyListeners();
   return reminder;
+}
+
+function updateReminderSource(orderId: string, source: 'auto_from_reservation' | 'user_custom'): void {
+  const reminders = getReminders();
+  if (reminders[orderId]) {
+    reminders[orderId].source = source;
+    saveReminders(reminders);
+    notifyListeners();
+  }
 }
 
 function cancelReminder(orderId: string): void {
@@ -362,6 +372,7 @@ export {
   setReminder,
   cancelReminder,
   getReminderByOrder,
+  updateReminderSource,
   formatReminderText,
   getWeekdayDate,
   getQuickOptions,

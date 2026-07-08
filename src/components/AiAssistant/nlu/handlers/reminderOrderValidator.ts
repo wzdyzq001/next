@@ -1,10 +1,12 @@
 import { toStandardCategory } from '../../../../types';
+import { isFreeReservationOrder, parseReservationTimestamp } from '../reservationReminderUtils';
 
 export interface ReminderValidationResult {
   canSet: boolean;
   reason?: 'status' | 'category' | 'has_booking';
   hint?: string;
   bookingDate?: string;
+  reservationTimestamp?: number;
 }
 
 const UNUSED_STATUS_KEYWORDS = [
@@ -155,12 +157,48 @@ function getBookingDate(orderCard: any): string {
   );
 }
 
+function getBookingTime(orderCard: any): string {
+  return (
+    orderCard.bookingTime ||
+    orderCard.reservationTime ||
+    orderCard.appointmentTime ||
+    ''
+  );
+}
+
+function getReservationTimestamp(orderCard: any): number | undefined {
+  const bookingDate = getBookingDate(orderCard);
+  if (!bookingDate) return undefined;
+
+  const bookingTime = getBookingTime(orderCard);
+  const timeStr = bookingTime || '18:00';
+
+  const timestamp = parseReservationTimestamp(bookingDate, timeStr);
+  return timestamp ?? undefined;
+}
+
+function isOrderBooked(orderCard: any): boolean {
+  const bookingStatus = getEffectiveBookingStatus(orderCard);
+  return (
+    matchesKeywords(bookingStatus, BOOKING_CONFIRMING_KEYWORDS) ||
+    matchesKeywords(bookingStatus, BOOKING_CONFIRMED_KEYWORDS)
+  );
+}
+
 export function canOrderSetReminder(orderCard: any): ReminderValidationResult {
   if (!isOrderUnused(orderCard)) {
     return {
       canSet: false,
       reason: 'status',
       hint: '仅待使用订单支持设置使用提醒，请选择其他订单',
+    };
+  }
+
+  if (isFreeReservationOrder(orderCard) && isOrderBooked(orderCard)) {
+    const reservationTimestamp = getReservationTimestamp(orderCard);
+    return {
+      canSet: true,
+      reservationTimestamp,
     };
   }
 

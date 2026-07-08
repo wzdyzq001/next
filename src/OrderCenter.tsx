@@ -95,6 +95,53 @@ function formatPaymentCountdown(deadlineAt: number, now: number) {
 // OrderDetail: Detailed view based on order status and category
 // ============================================================================
 
+function parseArrivalTimeToTimestamp(arrivalTime: string): number | null {
+  if (!arrivalTime) return null;
+  const parts = arrivalTime.split(' ');
+  if (parts.length < 2) return null;
+
+  const datePart = parts[0];
+  const timePart = parts[1];
+
+  let month = 0;
+  let day = 0;
+
+  const cnMatch = datePart.match(/(\d{1,2})月(\d{1,2})日/);
+  if (cnMatch) {
+    month = parseInt(cnMatch[1], 10) - 1;
+    day = parseInt(cnMatch[2], 10);
+  } else {
+    const isoMatch = datePart.match(/\d{4}-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      month = parseInt(isoMatch[1], 10) - 1;
+      day = parseInt(isoMatch[2], 10);
+    } else {
+      const dotMatch = datePart.match(/(\d{1,2})\.(\d{1,2})/);
+      if (dotMatch) {
+        month = parseInt(dotMatch[1], 10) - 1;
+        day = parseInt(dotMatch[2], 10);
+      } else {
+        return null;
+      }
+    }
+  }
+
+  const timeMatch = timePart.match(/^(\d{1,2}):(\d{2})$/);
+  if (!timeMatch) return null;
+
+  const hour = parseInt(timeMatch[1], 10);
+  const min = parseInt(timeMatch[2], 10);
+
+  const now = new Date();
+  const date = new Date(now.getFullYear(), month, day, hour, min, 0, 0);
+
+  if (month < now.getMonth()) {
+    date.setFullYear(now.getFullYear() + 1);
+  }
+
+  return date.getTime();
+}
+
 function OrderReservationCard({
   data,
   now,
@@ -111,7 +158,17 @@ function OrderReservationCard({
   const isCanceled = data.acceptStatus === 'canceled';
   const isPending = data.acceptStatus === 'pending';
   const countdownText = formatReservationCountdown(data.acceptDeadlineAt, now);
-  const statusText = isAccepted ? '预约成功' : isFailed ? '预约失败' : isCanceled ? '预约已取消' : '预约确认中';
+  const arrivalTimestamp = parseArrivalTimeToTimestamp(data.arrivalTime);
+  const isExpired = isAccepted && arrivalTimestamp !== null && arrivalTimestamp <= now;
+  const statusText = isExpired
+    ? '预约已完成'
+    : isAccepted
+      ? '预约成功'
+      : isFailed
+        ? '预约失败'
+        : isCanceled
+          ? '预约已取消'
+          : '预约确认中';
   return (
     <div className={`oc-reservation-card-v3 ${isFailed || isCanceled ? 'failed' : ''}`}>
       <div className="oc-reservation-card-head">
@@ -121,7 +178,15 @@ function OrderReservationCard({
             {isPending && <span>{countdownText}</span>}
           </div>
           <div className="oc-reservation-sub">
-            {isCanceled ? '当前预约已取消，可重新发起预约' : isFailed ? '商家暂未接单，可重新发起预约' : isAccepted ? '商家已接单，到店前可取消预约' : '预约结果将在订单展示并以短信通知，可随时取消'}
+            {isCanceled
+              ? '当前预约已取消，可重新发起预约'
+              : isFailed
+                ? '商家暂未接单，可重新发起预约'
+                : isExpired
+                  ? '预约时间已过，感谢您的光临。'
+                  : isAccepted
+                    ? '商家已接单，到店前可取消预约'
+                    : '预约结果将在订单展示并以短信通知，可随时取消'}
           </div>
         </div>
       </div>
@@ -156,7 +221,9 @@ function OrderReservationCard({
       <div className="oc-reservation-action-row">
         <button>联系商家</button>
         <button>地图导航</button>
-        {(isFailed || isCanceled) && onRebook ? <button className="rebook" onClick={onRebook}>重新预约</button> : onCancel && <button onClick={onCancel}>取消预约</button>}
+        {(isFailed || isCanceled) && onRebook
+          ? <button className="rebook" onClick={onRebook}>重新预约</button>
+          : onCancel && !isExpired && <button onClick={onCancel}>取消预约</button>}
       </div>
     </div>
   );
@@ -1806,6 +1873,16 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
     scrollDebounceMs: reachBubbleConfig?.scrollDebounceMs || 150,
     scrollTarget: detailScrollRef.current,
   });
+
+  const bubbleReachId = reachBubbleConfig?.reachId;
+  const bubbleCollapseStrategy = reachBubbleConfig?.collapseStrategy;
+
+  useEffect(() => {
+    if (!bubbleReachId) return;
+    if (bubbleCollapseStrategy === 'none') {
+      expandBubble();
+    }
+  }, [bubbleReachId, bubbleCollapseStrategy, expandBubble]);
 
   const handleReachBubbleClick = useCallback(() => {
     if (!reachBubbleConfig || !listItem) return;
@@ -5337,7 +5414,7 @@ function OrderDetail({ orderId, onBack, onChatWithOrder, reservationInfo, reserv
                       }}
                       bubbleType={bubbleType}
                       isHidden={isBubbleHidden}
-                      arrowOffset={24}
+                      arrowOffset={26}
                       onClick={handleReachBubbleClick}
                     />
                   </div>

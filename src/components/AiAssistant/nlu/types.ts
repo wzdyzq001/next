@@ -33,6 +33,13 @@ export type ReminderStep =
   | 'confirming'
   | 'completed';
 
+export type ReservationReminderStep =
+  | 'asking_setting'
+  | 'asking_adjust_late'
+  | 'asking_adjust_early'
+  | 'confirming_custom'
+  | 'completed';
+
 export interface ReservationEntities {
   date?: string;
   time?: string;
@@ -52,6 +59,7 @@ export interface NluDialogState extends BaseDialogState {
   currentIntent: IntentType | null;
   reservationStep?: ReservationStep;
   reminderStep?: ReminderStep;
+  reservationReminderStep?: ReservationReminderStep;
 }
 
 export interface NluResponseMessage {
