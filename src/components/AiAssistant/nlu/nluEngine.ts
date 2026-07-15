@@ -45,7 +45,7 @@ export function processNluMessage(
       !isNegative(message) &&
       !isReminderRelatedResponse(message);
     if (isNewReservationRequest) {
-      const clearedState = {
+      const clearedState: NluDialogState = {
         ...dialogState,
         reservationReminderStep: undefined,
         currentStep: 'idle',
